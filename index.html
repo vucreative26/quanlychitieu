@@ -22,36 +22,12 @@
   <!-- Google Fonts: Inter & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
 
-  <!-- Tailwind CSS CDN with dark mode support -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#ecfdf5',
-              100: '#d1fae5',
-              500: '#10b981',
-              600: '#059669',
-              700: '#047857',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Lucide Icons CDN -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Prebuilt local assets keep startup independent of CDN latency. -->
+  <link rel="stylesheet" href="./assets/app.css" />
+  <script defer src="./assets/lucide.min.js"></script>
+  <script defer src="./assets/chart.umd.js"></script>
 
   <style>
     /* Smooth transitions and mobile polish */
@@ -1077,9 +1053,8 @@
 
     // Storage Management: localStorage + database.json
     async function loadInitialData() {
-      // Clear legacy mock data and migrate to v4 unified cards & daily budget
+      // Mark migration without deleting an existing user's database.
       if (!localStorage.getItem('fintech_pwa_v4_clean')) {
-        localStorage.removeItem('fintech_pwa_data');
         localStorage.setItem('fintech_pwa_v4_clean', 'true');
       }
 
@@ -1163,6 +1138,7 @@
     // PIN / SECURITY MANAGEMENT (Requirement 02)
     // ==========================================
     let isCurrentPinVisible = false;
+    let isPinReady = false;
 
     function renderPinDots() {
       const targetPin = (appData.settings?.pin || "1234").trim();
@@ -1175,6 +1151,7 @@
     }
 
     function checkPinRequirement() {
+      isPinReady = true;
       const pin = appData.settings?.pin || "1234";
       const lockModal = document.getElementById('pin-lock-modal');
       if (pin && pin.trim().length > 0) {
@@ -1187,6 +1164,8 @@
     }
 
     function pressPin(digit) {
+      // Never validate against the default PIN while the saved database is loading.
+      if (!isPinReady) return;
       const targetPin = (appData.settings?.pin || "1234").trim();
       if (enteredPin.length < targetPin.length) {
         enteredPin += digit;
@@ -1241,10 +1220,7 @@
 
     function unlockApp() {
       const lockModal = document.getElementById('pin-lock-modal');
-      lockModal.classList.add('opacity-0', 'pointer-events-none');
-      setTimeout(() => {
-        lockModal.classList.add('hidden');
-      }, 300);
+      lockModal.classList.add('hidden', 'opacity-0', 'pointer-events-none');
       showToast('Mở khóa thành công! Chào mừng bạn.');
     }
 
@@ -1683,7 +1659,9 @@
       renderHome();
       renderCards();
       renderGoals();
-      renderReports();
+      if (!document.getElementById('tab-analytics').classList.contains('hidden')) {
+        renderReports();
+      }
       renderSettings();
       updateNotificationBadge();
       lucide.createIcons();

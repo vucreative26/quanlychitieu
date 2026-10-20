@@ -1,9 +1,12 @@
-const CACHE_NAME = 'fintech-pwa-v2';
+const CACHE_NAME = 'fintech-pwa-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './database.json',
+  './assets/app.css',
+  './assets/lucide.min.js',
+  './assets/chart.umd.js',
   './icon.svg',
   './apple-touch-icon.png',
   './icon-192.png',
@@ -25,7 +28,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => name.startsWith('fintech-pwa-') && name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     })
@@ -34,32 +37,40 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Try network first, then cache fallback
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          event.request.method === 'GET' &&
-          event.request.url.startsWith(self.location.origin)
-        ) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Serve the saved app immediately; refresh HTML and the seed database in
+  // the background so a slow connection cannot hold up the PIN screen.
+  const update = async (cache) => {
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  };
+  const cachePromise = caches.open(CACHE_NAME);
+  const cachedPromise = cachePromise.then(cache => cache.match(request));
+  const shouldRefresh = request.mode === 'navigate' || url.pathname.endsWith('/database.json');
+  if (shouldRefresh) {
+    const networkPromise = cachePromise.then(update);
+    event.waitUntil(networkPromise.catch(() => {}));
+    event.respondWith((async () => {
+      const cached = await cachedPromise;
+      if (cached) return cached;
+      try {
+        return await networkPromise;
+      } catch (error) {
+        if (request.mode === 'navigate') {
+          const fallback = await (await cachePromise).match('./index.html');
+          if (fallback) return fallback;
         }
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-      })
-  );
+        return Response.error();
+      }
+    })());
+  } else {
+    event.respondWith((async () => {
+      const cached = await cachedPromise;
+      return cached || update(await cachePromise);
+    })());
+  }
 });
