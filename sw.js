@@ -1,10 +1,14 @@
-const CACHE_NAME = 'fintech-pwa-v1';
+const CACHE_NAME = 'fintech-pwa-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './database.json',
-  './icon.svg'
+  './icon.svg',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png',
+  './favicon.png'
 ];
 
 self.addEventListener('install', (event) => {

@@ -5,14 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ví Thông Minh - Quản Lý Chi Tiêu PWA</title>
   
-  <!-- PWA Metadata -->
+  <!-- PWA & Apple Touch Icons -->
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#09090b" id="theme-color-meta" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Ví Chi Tiêu" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-180x180.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png" />
 
   <!-- Google Fonts: Inter & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -77,6 +82,15 @@
       border: 1px solid rgba(0, 0, 0, 0.08);
       box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
     }
+    /* Shake animation for wrong PIN */
+    @keyframes shakePin {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-10px); }
+      40%, 80% { transform: translateX(10px); }
+    }
+    .animate-shake {
+      animation: shakePin 0.4s ease-in-out;
+    }
     /* Safe area padding for iPhone dynamic island / home indicator */
     .pb-safe {
       padding-bottom: env(safe-area-inset-bottom, 20px);
@@ -104,32 +118,34 @@
       </div>
 
       <!-- PIN Dots -->
-      <div class="flex justify-center items-center gap-4 py-2">
+      <div id="pin-dots-container" class="flex justify-center items-center gap-4 py-2">
         <div class="pin-dot w-4 h-4 rounded-full border-2 border-zinc-600 transition-all duration-200"></div>
         <div class="pin-dot w-4 h-4 rounded-full border-2 border-zinc-600 transition-all duration-200"></div>
         <div class="pin-dot w-4 h-4 rounded-full border-2 border-zinc-600 transition-all duration-200"></div>
         <div class="pin-dot w-4 h-4 rounded-full border-2 border-zinc-600 transition-all duration-200"></div>
       </div>
-      <p id="pin-error" class="text-xs text-rose-500 font-medium h-4"></p>
+      <p id="pin-error" class="text-xs text-rose-500 font-semibold h-4 transition-all"></p>
 
       <!-- Numeric Keypad -->
       <div class="grid grid-cols-3 gap-3">
-        <button onclick="pressPin('1')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">1</button>
-        <button onclick="pressPin('2')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">2</button>
-        <button onclick="pressPin('3')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">3</button>
-        <button onclick="pressPin('4')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">4</button>
-        <button onclick="pressPin('5')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">5</button>
-        <button onclick="pressPin('6')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">6</button>
-        <button onclick="pressPin('7')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">7</button>
-        <button onclick="pressPin('8')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">8</button>
-        <button onclick="pressPin('9')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">9</button>
-        <button onclick="clearPin()" class="h-14 rounded-2xl bg-zinc-800/40 hover:bg-zinc-700/60 active:scale-95 text-sm font-semibold text-zinc-400 transition">Xóa</button>
-        <button onclick="pressPin('0')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">0</button>
-        <button onclick="unlockBypass()" class="h-14 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 active:scale-95 text-xs font-semibold transition" title="Bỏ qua cho lần xem nhanh">Bỏ qua</button>
+        <button type="button" onclick="pressPin('1')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">1</button>
+        <button type="button" onclick="pressPin('2')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">2</button>
+        <button type="button" onclick="pressPin('3')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">3</button>
+        <button type="button" onclick="pressPin('4')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">4</button>
+        <button type="button" onclick="pressPin('5')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">5</button>
+        <button type="button" onclick="pressPin('6')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">6</button>
+        <button type="button" onclick="pressPin('7')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">7</button>
+        <button type="button" onclick="pressPin('8')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">8</button>
+        <button type="button" onclick="pressPin('9')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">9</button>
+        <button type="button" onclick="clearPin()" class="h-14 rounded-2xl bg-zinc-800/40 hover:bg-zinc-700/60 active:scale-95 text-xs font-semibold text-zinc-400 transition" title="Xóa tất cả">Xóa hết</button>
+        <button type="button" onclick="pressPin('0')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">0</button>
+        <button type="button" onclick="deletePinDigit()" class="h-14 rounded-2xl bg-zinc-800/40 hover:bg-zinc-700/60 active:scale-95 flex items-center justify-center text-zinc-300 transition" title="Xóa lùi">
+          <i data-lucide="delete" class="w-5 h-5"></i>
+        </button>
       </div>
 
       <div class="text-xs text-zinc-500">
-        PIN mặc định: <span class="font-mono text-zinc-400">1234</span>
+        Bảo mật mã PIN • Đúng mật khẩu mới truy cập được
       </div>
     </div>
   </div>
@@ -492,19 +508,26 @@
 
         <!-- PIN Settings -->
         <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <i data-lucide="lock" class="w-5 h-5"></i>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                <i data-lucide="lock" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-sm">Bảo mật ứng dụng (Mã PIN)</h3>
+                <p class="text-xs text-zinc-500">Khóa bảo vệ nghiêm ngặt khi mở ứng dụng</p>
+              </div>
             </div>
-            <div>
-              <h3 class="font-bold text-sm">Bảo mật ứng dụng (Mã PIN)</h3>
-              <p class="text-xs text-zinc-500">Mã PIN khóa bảo vệ khi mở ứng dụng</p>
-            </div>
+            <button type="button" onclick="lockAppNow()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition active:scale-95">
+              <i data-lucide="lock" class="w-3.5 h-3.5 text-amber-500"></i>
+              <span>Khóa ngay</span>
+            </button>
           </div>
           <div class="flex items-center gap-3 pt-2">
-            <input type="password" id="input-new-pin" maxlength="6" placeholder="Mã PIN mới (4-6 số)" class="flex-1 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-sm" />
-            <button onclick="saveNewPin()" class="px-5 py-3 rounded-2xl bg-zinc-900 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 font-bold text-xs active:scale-95 transition">Lưu PIN</button>
+            <input type="password" id="input-new-pin" maxlength="6" placeholder="Mã PIN mới (4-6 chữ số)" class="flex-1 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-sm" />
+            <button type="button" onclick="saveNewPin()" class="px-5 py-3 rounded-2xl bg-zinc-900 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 font-bold text-xs active:scale-95 transition">Đổi PIN</button>
           </div>
+          <p class="text-[11px] text-zinc-400">PIN đang dùng: <span id="current-pin-display" class="font-mono font-bold text-emerald-500">••••</span> <button type="button" onclick="toggleCurrentPinVisibility()" class="underline ml-1 text-zinc-500 hover:text-zinc-300">Hiện/Ẩn</button></p>
         </div>
 
         <!-- Daily Budget Setting (Requirement 04) -->
@@ -1136,39 +1159,78 @@
       renderAll();
     }
 
-    // PIN Management
+    // ==========================================
+    // PIN / SECURITY MANAGEMENT (Requirement 02)
+    // ==========================================
+    let isCurrentPinVisible = false;
+
+    function renderPinDots() {
+      const targetPin = (appData.settings?.pin || "1234").trim();
+      const container = document.getElementById('pin-dots-container');
+      if (!container) return;
+      container.innerHTML = Array.from({ length: targetPin.length })
+        .map(() => `<div class="pin-dot w-4 h-4 rounded-full border-2 border-zinc-600 transition-all duration-200"></div>`)
+        .join('');
+      updatePinDots();
+    }
+
     function checkPinRequirement() {
-      const pin = appData.settings?.pin;
+      const pin = appData.settings?.pin || "1234";
       const lockModal = document.getElementById('pin-lock-modal');
       if (pin && pin.trim().length > 0) {
-        lockModal.classList.remove('hidden');
+        lockModal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+        renderPinDots();
+        clearPin();
       } else {
         lockModal.classList.add('hidden');
       }
     }
 
     function pressPin(digit) {
-      if (enteredPin.length < 6) {
+      const targetPin = (appData.settings?.pin || "1234").trim();
+      if (enteredPin.length < targetPin.length) {
         enteredPin += digit;
         updatePinDots();
-        if (enteredPin.length >= 4 && enteredPin === appData.settings.pin) {
-          unlockApp();
-        } else if (enteredPin.length >= 4 && enteredPin.length === appData.settings.pin.length) {
-          document.getElementById('pin-error').innerText = "Mã PIN không đúng!";
-          setTimeout(() => clearPin(), 400);
+        if (enteredPin.length === targetPin.length) {
+          if (enteredPin === targetPin) {
+            unlockApp();
+          } else {
+            const errEl = document.getElementById('pin-error');
+            if (errEl) errEl.innerText = "Mật khẩu không đúng! Vui lòng thử lại.";
+            const container = document.getElementById('pin-dots-container');
+            if (container) {
+              container.classList.add('animate-shake');
+              setTimeout(() => container.classList.remove('animate-shake'), 450);
+            }
+            document.querySelectorAll('.pin-dot').forEach(dot => {
+              dot.classList.add('border-rose-500', 'bg-rose-500/50');
+            });
+            setTimeout(() => clearPin(), 500);
+          }
         }
+      }
+    }
+
+    function deletePinDigit() {
+      if (enteredPin.length > 0) {
+        enteredPin = enteredPin.slice(0, -1);
+        const errEl = document.getElementById('pin-error');
+        if (errEl) errEl.innerText = "";
+        updatePinDots();
       }
     }
 
     function clearPin() {
       enteredPin = "";
-      document.getElementById('pin-error').innerText = "";
+      const errEl = document.getElementById('pin-error');
+      if (errEl) errEl.innerText = "";
       updatePinDots();
     }
 
     function updatePinDots() {
       const dots = document.querySelectorAll('.pin-dot');
       dots.forEach((dot, index) => {
+        dot.classList.remove('border-rose-500', 'bg-rose-500/50');
         if (index < enteredPin.length) {
           dot.classList.add('bg-emerald-400', 'border-emerald-400', 'scale-110');
         } else {
@@ -1178,28 +1240,66 @@
     }
 
     function unlockApp() {
-      document.getElementById('pin-lock-modal').classList.add('opacity-0', 'pointer-events-none');
+      const lockModal = document.getElementById('pin-lock-modal');
+      lockModal.classList.add('opacity-0', 'pointer-events-none');
       setTimeout(() => {
-        document.getElementById('pin-lock-modal').classList.add('hidden');
+        lockModal.classList.add('hidden');
       }, 300);
-      showToast('Chào mừng trở lại!');
+      showToast('Mở khóa thành công! Chào mừng bạn.');
     }
 
-    function unlockBypass() {
-      unlockApp();
+    function lockAppNow() {
+      enteredPin = "";
+      const lockModal = document.getElementById('pin-lock-modal');
+      lockModal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+      renderPinDots();
+      clearPin();
+      showToast('Đã khóa ứng dụng an toàn.');
     }
 
     function saveNewPin() {
       const val = document.getElementById('input-new-pin').value.trim();
-      if (val.length >= 4) {
-        appData.settings.pin = val;
-        saveToLocalStorage();
-        showToast('Đã lưu mã PIN mới thành công!');
-        document.getElementById('input-new-pin').value = '';
-      } else {
-        alert('Mã PIN phải có ít nhất 4 chữ số!');
+      if (!/^\d{4,6}$/.test(val)) {
+        alert('Mã PIN mới phải bao gồm từ 4 đến 6 chữ số (0-9)!');
+        return;
       }
+      if (!appData.settings) appData.settings = {};
+      appData.settings.pin = val;
+      saveToLocalStorage();
+      renderPinDots();
+      updateCurrentPinDisplay();
+      document.getElementById('input-new-pin').value = '';
+      showToast('Đã lưu mã PIN mới thành công!');
     }
+
+    function updateCurrentPinDisplay() {
+      const el = document.getElementById('current-pin-display');
+      if (!el) return;
+      const pin = appData.settings?.pin || "1234";
+      el.innerText = isCurrentPinVisible ? pin : '•'.repeat(pin.length);
+    }
+
+    function toggleCurrentPinVisibility() {
+      isCurrentPinVisible = !isCurrentPinVisible;
+      updateCurrentPinDisplay();
+    }
+
+    // Physical keyboard listener for PIN entry
+    window.addEventListener('keydown', (e) => {
+      const lockModal = document.getElementById('pin-lock-modal');
+      if (lockModal && !lockModal.classList.contains('hidden') && !lockModal.classList.contains('opacity-0')) {
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          pressPin(e.key);
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          deletePinDigit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          clearPin();
+        }
+      }
+    });
 
     function saveDailyBudget() {
       const val = Number(document.getElementById('input-daily-budget').value);
@@ -2723,6 +2823,7 @@
         if (ghInput) ghInput.value = appData.settings.githubDbUrl;
       }
       renderSettingsCategories();
+      updateCurrentPinDisplay();
     }
 
     // Service Worker Registration for PWA
