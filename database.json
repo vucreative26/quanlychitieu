@@ -17,7 +17,10 @@
     { "id": "cat_education", "name": "Học tập & Sách", "type": "expense", "icon": "graduation-cap", "color": "#06b6d4" },
     { "id": "cat_salary", "name": "Lương tháng", "type": "income", "icon": "coins", "color": "#10b981" },
     { "id": "cat_bonus", "name": "Thưởng & Dự án", "type": "income", "icon": "award", "color": "#14b8a6" },
-    { "id": "cat_invest", "name": "Đầu tư / Lãi", "type": "income", "icon": "trending-up", "color": "#6366f1" }
+    { "id": "cat_invest", "name": "Đầu tư / Lãi", "type": "income", "icon": "trending-up", "color": "#6366f1" },
+    { "id": "cat_business", "name": "Bán hàng / Kinh doanh", "type": "income", "icon": "briefcase", "color": "#3b82f6" },
+    { "id": "cat_gift", "name": "Quà tặng / Trúng thưởng", "type": "income", "icon": "gift", "color": "#f59e0b" },
+    { "id": "cat_other_inc", "name": "Thu nhập khác", "type": "income", "icon": "wallet", "color": "#8b5cf6" }
   ],
   "goals": [],
   "transactions": [],
