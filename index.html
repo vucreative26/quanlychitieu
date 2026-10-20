@@ -217,9 +217,11 @@
           </button>
 
           <!-- Notification Bell -->
-          <button onclick="showToast('Bạn không có thông báo mới nào!')" class="relative p-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-sm active:scale-95 transition">
+          <button onclick="openNotificationModal()" class="relative p-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-sm active:scale-95 transition" title="Thông báo hạn mức">
             <i data-lucide="bell" class="w-5 h-5"></i>
-            <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+            <span id="notif-badge" class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow hidden animate-pulse">
+              <span id="notif-badge-count">0</span>
+            </span>
           </button>
         </div>
       </header>
@@ -237,7 +239,7 @@
           <div class="relative z-10 flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Tổng tài sản ròng</span>
+              <span class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Dòng tiền thuần tháng này</span>
             </div>
             <!-- Eye toggle to hide/show numbers -->
             <button onclick="toggleBalanceVisibility()" class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 transition text-zinc-300" title="Ẩn/Hiện số tiền">
@@ -309,6 +311,24 @@
           </button>
         </div>
 
+        <!-- DAILY BUDGET PROGRESS BAR (Requirement 04) -->
+        <div class="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <i data-lucide="alarm-clock" class="w-4 h-4 text-emerald-500"></i>
+                <span class="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Hạn mức chi tiêu hôm nay</span>
+              </div>
+              <p class="text-base font-bold mt-0.5" id="daily-budget-ratio-text">0 ₫ / 500,000 ₫</p>
+            </div>
+            <span id="daily-budget-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Còn lại: 500,000 ₫</span>
+          </div>
+          <!-- Progress bar -->
+          <div class="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-3 overflow-hidden p-0.5">
+            <div id="daily-budget-progress-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
         <!-- MONTHLY BUDGET PROGRESS BAR (Image 1 Style) -->
         <div class="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
@@ -352,17 +372,17 @@
       <section id="tab-cards" class="tab-pane hidden space-y-6">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold tracking-tight">Thẻ & Ví tài khoản</h2>
-            <p class="text-xs text-zinc-500">Quản lý dòng tiền trên từng phương thức thanh toán</p>
+            <h2 class="text-xl font-bold tracking-tight">Thẻ & Ví thanh toán</h2>
+            <p class="text-xs text-zinc-500">Quản lý các loại thẻ & ví liên kết khi chi tiêu (không cần số dư)</p>
           </div>
-          <button onclick="openWalletModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-bold shadow active:scale-95 transition">
+          <button onclick="openCardModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-bold shadow active:scale-95 transition">
             <i data-lucide="plus" class="w-4 h-4"></i>
-            <span>Thêm ví</span>
+            <span>Thêm Thẻ / Ví</span>
           </button>
         </div>
 
-        <!-- Cards Carousel / List -->
-        <div id="wallets-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Cards List -->
+        <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Rendered by JS -->
         </div>
       </section>
@@ -370,13 +390,50 @@
       <!-- ================= TAB: ANALYTICS & REPORTS ================= -->
       <section id="tab-analytics" class="tab-pane hidden space-y-6">
         <div>
-          <h2 class="text-xl font-bold tracking-tight">Thống kê & Phân tích</h2>
-          <p class="text-xs text-zinc-500">Báo cáo dòng tiền, cơ cấu chi tiêu trực quan</p>
+          <h2 class="text-xl font-bold tracking-tight">Thống kê & Báo cáo</h2>
+          <p class="text-xs text-zinc-500">Xem phân tích dòng tiền tùy chỉnh theo Ngày, Tháng, Năm</p>
         </div>
 
-        <!-- Donut Chart: Chi tiêu theo Danh mục (Image 4 Style) -->
+        <!-- FILTER TOOLBAR (Day, Month, Year, All) -->
+        <div class="p-4 sm:p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
+          <!-- Mode Tabs -->
+          <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+            <div class="inline-flex p-1 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs font-semibold">
+              <button type="button" onclick="setReportMode('day')" id="btn-report-day" class="px-3.5 py-2 rounded-xl transition">Theo Ngày</button>
+              <button type="button" onclick="setReportMode('month')" id="btn-report-month" class="px-3.5 py-2 rounded-xl transition bg-white dark:bg-zinc-900 shadow text-emerald-500">Theo Tháng</button>
+              <button type="button" onclick="setReportMode('year')" id="btn-report-year" class="px-3.5 py-2 rounded-xl transition">Theo Năm</button>
+              <button type="button" onclick="setReportMode('all')" id="btn-report-all" class="px-3.5 py-2 rounded-xl transition">Toàn bộ</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Selector based on Mode -->
+          <div id="report-date-selector-container" class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+            <!-- Rendered by JS based on reportMode -->
+          </div>
+        </div>
+
+        <!-- KPI SUMMARY CARDS FOR CHOSEN PERIOD -->
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-4">
+          <div class="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+            <p class="text-[11px] font-semibold text-zinc-500 mb-1">Tổng chi tiêu</p>
+            <h4 id="report-total-expense" class="text-base sm:text-lg font-black text-rose-500">0 ₫</h4>
+          </div>
+          <div class="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+            <p class="text-[11px] font-semibold text-zinc-500 mb-1">Tổng thu nhập</p>
+            <h4 id="report-total-income" class="text-base sm:text-lg font-black text-emerald-500">0 ₫</h4>
+          </div>
+          <div class="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+            <p class="text-[11px] font-semibold text-zinc-500 mb-1">Dòng tiền thuần</p>
+            <h4 id="report-net-balance" class="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-100">0 ₫</h4>
+          </div>
+        </div>
+
+        <!-- Donut Chart: Chi tiêu theo Danh mục -->
         <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
-          <h3 class="font-bold text-sm tracking-tight">Cơ cấu chi tiêu (Danh mục)</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm tracking-tight" id="donut-chart-title">Cơ cấu chi tiêu (Danh mục)</h3>
+            <span id="donut-period-subtitle" class="text-xs text-zinc-500"></span>
+          </div>
           <div class="relative flex items-center justify-center py-2 h-64">
             <canvas id="categoryDonutChart"></canvas>
           </div>
@@ -385,17 +442,23 @@
           </div>
         </div>
 
-        <!-- Bar Chart: Chi tiêu theo thời gian (Image 3 Style) -->
+        <!-- Bar Chart: Diễn biến chi tiêu theo thời gian -->
         <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
-          <h3 class="font-bold text-sm tracking-tight">Dòng tiền 7 ngày gần nhất</h3>
-          <div class="h-56">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm tracking-tight" id="bar-chart-title">Diễn biến chi tiêu</h3>
+            <span id="bar-chart-subtitle" class="text-xs text-zinc-500"></span>
+          </div>
+          <div class="h-60">
             <canvas id="weeklyBarChart"></canvas>
           </div>
         </div>
 
-        <!-- All Transactions Full History -->
+        <!-- Filtered Transactions History -->
         <div class="space-y-3">
-          <h3 class="font-bold text-sm tracking-tight">Lịch sử toàn bộ giao dịch</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm tracking-tight" id="transactions-list-title">Danh sách giao dịch trong kỳ</h3>
+            <span id="transactions-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">0 giao dịch</span>
+          </div>
           <div id="all-transactions-list" class="space-y-2.5">
             <!-- Rendered by JS -->
           </div>
@@ -441,6 +504,23 @@
           <div class="flex items-center gap-3 pt-2">
             <input type="password" id="input-new-pin" maxlength="6" placeholder="Mã PIN mới (4-6 số)" class="flex-1 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-sm" />
             <button onclick="saveNewPin()" class="px-5 py-3 rounded-2xl bg-zinc-900 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 font-bold text-xs active:scale-95 transition">Lưu PIN</button>
+          </div>
+        </div>
+
+        <!-- Daily Budget Setting (Requirement 04) -->
+        <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <i data-lucide="alarm-clock" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm">Hạn mức chi tiêu mỗi ngày</h3>
+              <p class="text-xs text-zinc-500">Tự động cảnh báo & hiện popup khi sắp chạm hoặc vượt hạn mức</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <input type="number" id="input-daily-budget" placeholder="500000" class="flex-1 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-sm font-bold" />
+            <button onclick="saveDailyBudget()" class="px-5 py-3 rounded-2xl bg-zinc-900 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 font-bold text-xs active:scale-95 transition">Lưu hạn mức</button>
           </div>
         </div>
 
@@ -501,8 +581,9 @@
               <input type="file" id="import-file-input" accept=".json" onchange="importDatabaseFile(event)" class="hidden" />
             </label>
           </div>
-          <button onclick="clearAllData()" class="w-full py-2.5 text-xs text-rose-500 hover:text-rose-600 font-semibold transition text-center">
-            Xóa toàn bộ dữ liệu (Khôi phục ban đầu)
+          <button onclick="clearAllData()" class="w-full py-3 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold text-xs active:scale-95 transition flex items-center justify-center gap-2">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>Xóa sạch Database (Reset trắng toàn bộ)</span>
           </button>
         </div>
 
@@ -561,9 +642,10 @@
   <!-- ================= MODAL: ADD / EDIT TRANSACTION ================= -->
   <div id="transaction-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 hidden transition-all duration-300">
     <div class="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom">
+      <input type="hidden" id="tx-edit-id" value="" />
       
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-bold tracking-tight">Thêm giao dịch mới</h3>
+        <h3 id="tx-modal-title" class="text-lg font-bold tracking-tight">Thêm giao dịch mới</h3>
         <button onclick="closeTransactionModal()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -588,7 +670,7 @@
         </div>
       </div>
 
-      <!-- Category & Wallet -->
+      <!-- Category & Wallet / Card -->
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-semibold text-zinc-500 mb-1">Danh mục</label>
@@ -597,9 +679,9 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-zinc-500 mb-1">Ví thanh toán</label>
+          <label class="block text-xs font-semibold text-zinc-500 mb-1">Ví / Thẻ thanh toán</label>
           <select id="tx-wallet" class="w-full px-3 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-xs font-medium">
-            <!-- Populated by JS -->
+            <!-- Populated by JS from cards -->
           </select>
         </div>
       </div>
@@ -617,17 +699,18 @@
       </div>
 
       <!-- Submit Button -->
-      <button onclick="submitTransaction()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-zinc-950 font-extrabold text-sm shadow-xl shadow-emerald-500/20 transition">
+      <button onclick="submitTransaction()" id="tx-submit-btn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-zinc-950 font-extrabold text-sm shadow-xl shadow-emerald-500/20 transition">
         Lưu giao dịch
       </button>
     </div>
   </div>
 
-  <!-- ================= MODAL: ADD GOAL ================= -->
+  <!-- ================= MODAL: ADD / EDIT GOAL ================= -->
   <div id="goal-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 hidden transition-all duration-300">
     <div class="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+      <input type="hidden" id="goal-edit-id" value="" />
       <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold">Thêm mục tiêu tích lũy</h3>
+        <h3 id="goal-modal-title" class="text-base font-bold">Thêm mục tiêu tích lũy</h3>
         <button onclick="closeGoalModal()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
@@ -635,7 +718,7 @@
 
       <div>
         <label class="block text-xs font-semibold text-zinc-500 mb-1">Tên mục tiêu</label>
-        <input type="text" id="goal-name" placeholder="Ví dụ: Đổi xe máy mới, Du lịch Đà Lạt..." class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none" />
+        <input type="text" id="goal-name" placeholder="Ví dụ: Đổi xe máy mới, Du lịch Đà Lạt..." class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none font-semibold" />
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -645,7 +728,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-zinc-500 mb-1">Đã có hiện tại</label>
-          <input type="number" id="goal-current" placeholder="5000000" class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none font-bold" />
+          <input type="number" id="goal-current" placeholder="0" class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none font-bold" />
         </div>
       </div>
 
@@ -654,46 +737,92 @@
         <input type="date" id="goal-deadline" class="w-full px-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono focus:outline-none" />
       </div>
 
-      <button onclick="submitGoal()" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs shadow-lg transition">
-        Tạo mục tiêu
+      <button onclick="submitGoal()" id="goal-submit-btn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs shadow-lg transition">
+        Lưu mục tiêu
       </button>
     </div>
   </div>
 
-  <!-- ================= MODAL: ADD WALLET ================= -->
-  <div id="wallet-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 hidden transition-all duration-300">
+  <!-- ================= MODAL: ADD / EDIT CARD (WALLET) ================= -->
+  <div id="card-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 hidden transition-all duration-300">
     <div class="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+      <input type="hidden" id="card-edit-id" value="" />
       <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold">Thêm tài khoản / Ví tiền</h3>
-        <button onclick="closeWalletModal()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
+        <h3 id="card-modal-title" class="text-base font-bold">Thêm Thẻ / Ví thanh toán</h3>
+        <button onclick="closeCardModal()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-zinc-500 mb-1">Tên ví / Ngân hàng</label>
-        <input type="text" id="wallet-name" placeholder="Ví dụ: Vietcombank, Techcombank, Heo đất..." class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none" />
+        <label class="block text-xs font-semibold text-zinc-500 mb-1">Tên Thẻ / Ví</label>
+        <input type="text" id="card-name" placeholder="Ví dụ: Thẻ MB Bank, Ví MoMo, Tiền mặt..." class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none font-semibold" />
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-semibold text-zinc-500 mb-1">Loại tài khoản</label>
-          <select id="wallet-type" class="w-full px-3 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none">
-            <option value="bank">Ngân hàng</option>
+          <label class="block text-xs font-semibold text-zinc-500 mb-1">Loại phương thức</label>
+          <select id="card-type" class="w-full px-3 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs focus:outline-none font-medium">
+            <option value="bank">Ngân hàng (ATM)</option>
             <option value="credit">Thẻ tín dụng</option>
-            <option value="cash">Tiền mặt</option>
             <option value="ewallet">Ví điện tử</option>
+            <option value="cash">Tiền mặt</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-zinc-500 mb-1">Số dư ban đầu</label>
-          <input type="number" id="wallet-balance" placeholder="0" class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs font-bold focus:outline-none" />
+          <label class="block text-xs font-semibold text-zinc-500 mb-1">4 số cuối (Tùy chọn)</label>
+          <input type="text" id="card-number" maxlength="4" placeholder="Ví dụ: 8899" class="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono focus:outline-none" />
         </div>
       </div>
 
-      <button onclick="submitWallet()" class="w-full py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs shadow-lg transition">
-        Lưu ví mới
+      <div>
+        <label class="block text-xs font-semibold text-zinc-500 mb-2">Màu sắc thẻ</label>
+        <div class="grid grid-cols-5 gap-2" id="card-color-picker">
+          <button type="button" onclick="selectCardColor('from-blue-600 to-indigo-900')" class="card-color-option h-9 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-900 ring-2 ring-transparent focus:ring-emerald-400"></button>
+          <button type="button" onclick="selectCardColor('from-emerald-600 to-teal-800')" class="card-color-option h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-800 ring-2 ring-transparent focus:ring-emerald-400"></button>
+          <button type="button" onclick="selectCardColor('from-purple-600 to-violet-900')" class="card-color-option h-9 rounded-xl bg-gradient-to-r from-purple-600 to-violet-900 ring-2 ring-transparent focus:ring-emerald-400"></button>
+          <button type="button" onclick="selectCardColor('from-rose-600 to-pink-800')" class="card-color-option h-9 rounded-xl bg-gradient-to-r from-rose-600 to-pink-800 ring-2 ring-transparent focus:ring-emerald-400"></button>
+          <button type="button" onclick="selectCardColor('from-zinc-800 to-zinc-950')" class="card-color-option h-9 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-950 ring-2 ring-transparent focus:ring-emerald-400"></button>
+        </div>
+        <input type="hidden" id="card-color" value="from-blue-600 to-indigo-900" />
+      </div>
+
+      <button onclick="submitCard()" id="card-submit-btn" class="w-full py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold text-xs shadow-lg transition">
+        Lưu Thẻ / Ví
       </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NOTIFICATIONS POPUP (Requirement 04) ================= -->
+  <div id="notification-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 hidden transition-all duration-300">
+    <div class="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+            <i data-lucide="bell-ring" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Thông báo chi tiêu</h3>
+            <p class="text-xs text-zinc-500">Cảnh báo hạn mức hàng ngày</p>
+          </div>
+        </div>
+        <button onclick="closeNotificationModal()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Notifications List Container -->
+      <div id="notifications-list" class="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Footer Info -->
+      <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+        <span>* Thông báo đã xem sẽ tự xóa sau 3 ngày</span>
+        <button onclick="closeNotificationModal()" class="px-4 py-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold text-xs active:scale-95 transition">
+          Đóng
+        </button>
+      </div>
     </div>
   </div>
 
@@ -710,13 +839,25 @@
         currency: "VND",
         pin: "1234",
         theme: "dark",
+        dailyBudget: 500000,
         monthlyBudget: 15000000,
         githubDbUrl: ""
       },
-      wallets: [],
-      categories: [],
+      cards: [],
+      categories: [
+        { id: "cat_food", name: "Ăn uống", type: "expense", icon: "utensils", color: "#f97316" },
+        { id: "cat_shopping", name: "Mua sắm", type: "expense", icon: "shopping-bag", color: "#ec4899" },
+        { id: "cat_transport", name: "Di chuyển", type: "expense", icon: "car", color: "#3b82f6" },
+        { id: "cat_bills", name: "Hóa đơn & Nhà ở", type: "expense", icon: "receipt", color: "#ef4444" },
+        { id: "cat_entertainment", name: "Giải trí & Du lịch", type: "expense", icon: "film", color: "#8b5cf6" },
+        { id: "cat_education", name: "Học tập & Sách", type: "expense", icon: "graduation-cap", color: "#06b6d4" },
+        { id: "cat_salary", name: "Lương tháng", type: "income", icon: "coins", color: "#10b981" },
+        { id: "cat_bonus", name: "Thưởng & Dự án", type: "income", icon: "award", color: "#14b8a6" },
+        { id: "cat_invest", name: "Đầu tư / Lãi", type: "income", icon: "trending-up", color: "#6366f1" }
+      ],
       goals: [],
-      transactions: []
+      transactions: [],
+      notifications: []
     };
 
     let enteredPin = "";
@@ -724,6 +865,13 @@
     let currentTxType = "expense";
     let categoryChartInstance = null;
     let weeklyChartInstance = null;
+    let selectedCardColor = "from-blue-600 to-indigo-900";
+
+    // Reports filter state (Requirement 02)
+    let reportMode = 'month'; // 'day', 'month', 'year', 'all'
+    let selectedDay = (new Date()).toISOString().slice(0, 10);
+    let selectedMonth = (new Date()).toISOString().slice(0, 7);
+    let selectedYear = (new Date()).getFullYear();
 
     // Toast helper
     function showToast(message) {
@@ -743,6 +891,31 @@
       return (Number(amount) || 0).toLocaleString('vi-VN') + " ₫";
     }
 
+    // Helper: Local Datetime String for input (YYYY-MM-DDTHH:mm)
+    function getLocalDateTimeString(date = new Date()) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const mm = pad(date.getMonth() + 1);
+      const dd = pad(date.getDate());
+      const hh = pad(date.getHours());
+      const mi = pad(date.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    // Helper: Format date for display in Vietnamese
+    function formatDateTimeDisplay(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      const dd = pad(d.getDate());
+      const mm = pad(d.getMonth() + 1);
+      const yyyy = d.getFullYear();
+      return `${hh}:${mi} - ${dd}/${mm}/${yyyy}`;
+    }
+
     // Toggle Balance Visibility (Eye Icon)
     function toggleBalanceVisibility() {
       isBalanceHidden = !isBalanceHidden;
@@ -754,12 +927,12 @@
       }
       lucide.createIcons();
       renderHome();
-      renderWallets();
+      renderCards();
     }
 
     // Theme Management
     function initTheme() {
-      const savedTheme = appData.settings.theme || 'dark';
+      const savedTheme = appData.settings?.theme || 'dark';
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
         document.documentElement.classList.remove('light');
@@ -776,15 +949,22 @@
       appData.settings.theme = isDark ? 'light' : 'dark';
       saveToLocalStorage();
       initTheme();
-      renderCharts();
+      renderReports();
     }
 
     // Storage Management: localStorage + database.json
     async function loadInitialData() {
+      // Clear legacy mock data and migrate to v4 unified cards & daily budget
+      if (!localStorage.getItem('fintech_pwa_v4_clean')) {
+        localStorage.removeItem('fintech_pwa_data');
+        localStorage.setItem('fintech_pwa_v4_clean', 'true');
+      }
+
       const cached = localStorage.getItem('fintech_pwa_data');
       if (cached) {
         try {
           appData = JSON.parse(cached);
+          ensureDataIntegrity();
           onDataReady();
           return;
         } catch (e) {
@@ -792,17 +972,55 @@
         }
       }
 
-      // Fetch local database.json file
+      // Fetch clean database.json file
       try {
         const res = await fetch('./database.json');
         if (res.ok) {
           appData = await res.json();
+          ensureDataIntegrity();
           saveToLocalStorage();
         }
       } catch (err) {
         console.warn("Could not load database.json directly", err);
       }
       onDataReady();
+    }
+
+    function ensureDataIntegrity() {
+      if (!appData.settings) appData.settings = {};
+      if (!appData.settings.dailyBudget) appData.settings.dailyBudget = 500000;
+      if (!appData.settings.monthlyBudget) appData.settings.monthlyBudget = 15000000;
+      if (!appData.cards) {
+        // Fallback migration from wallets if any
+        if (appData.wallets) {
+          appData.cards = appData.wallets.map(w => ({
+            id: w.id,
+            name: w.name,
+            type: w.type || 'bank',
+            accountNumber: w.accountNumber || '',
+            color: w.color || 'from-blue-600 to-indigo-900',
+            icon: w.icon || 'credit-card'
+          }));
+        } else {
+          appData.cards = [];
+        }
+      }
+      if (!appData.goals) appData.goals = [];
+      if (!appData.transactions) appData.transactions = [];
+      if (!appData.notifications) appData.notifications = [];
+      if (!appData.categories || appData.categories.length === 0) {
+        appData.categories = [
+          { id: "cat_food", name: "Ăn uống", type: "expense", icon: "utensils", color: "#f97316" },
+          { id: "cat_shopping", name: "Mua sắm", type: "expense", icon: "shopping-bag", color: "#ec4899" },
+          { id: "cat_transport", name: "Di chuyển", type: "expense", icon: "car", color: "#3b82f6" },
+          { id: "cat_bills", name: "Hóa đơn & Nhà ở", type: "expense", icon: "receipt", color: "#ef4444" },
+          { id: "cat_entertainment", name: "Giải trí & Du lịch", type: "expense", icon: "film", color: "#8b5cf6" },
+          { id: "cat_education", name: "Học tập & Sách", type: "expense", icon: "graduation-cap", color: "#06b6d4" },
+          { id: "cat_salary", name: "Lương tháng", type: "income", icon: "coins", color: "#10b981" },
+          { id: "cat_bonus", name: "Thưởng & Dự án", type: "income", icon: "award", color: "#14b8a6" },
+          { id: "cat_invest", name: "Đầu tư / Lãi", type: "income", icon: "trending-up", color: "#6366f1" }
+        ];
+      }
     }
 
     function saveToLocalStorage() {
@@ -812,12 +1030,15 @@
     function onDataReady() {
       initTheme();
       checkPinRequirement();
+      cleanExpiredNotifications();
+      evaluateDailyBudgetNotifications(false);
+      updateNotificationBadge();
       renderAll();
     }
 
     // PIN Management
     function checkPinRequirement() {
-      const pin = appData.settings.pin;
+      const pin = appData.settings?.pin;
       const lockModal = document.getElementById('pin-lock-modal');
       if (pin && pin.trim().length > 0) {
         lockModal.classList.remove('hidden');
@@ -831,7 +1052,6 @@
         enteredPin += digit;
         updatePinDots();
         if (enteredPin.length >= 4 && enteredPin === appData.settings.pin) {
-          // Success
           unlockApp();
         } else if (enteredPin.length >= 4 && enteredPin.length === appData.settings.pin.length) {
           document.getElementById('pin-error').innerText = "Mã PIN không đúng!";
@@ -881,13 +1101,28 @@
       }
     }
 
+    function saveDailyBudget() {
+      const val = Number(document.getElementById('input-daily-budget').value);
+      if (val > 0) {
+        appData.settings.dailyBudget = val;
+        saveToLocalStorage();
+        evaluateDailyBudgetNotifications(false);
+        renderHome();
+        showToast('Đã lưu hạn mức chi tiêu mỗi ngày!');
+      } else {
+        alert('Vui lòng nhập số tiền hợp lệ!');
+      }
+    }
+
     function saveMonthlyBudget() {
       const val = Number(document.getElementById('input-monthly-budget').value);
       if (val > 0) {
         appData.settings.monthlyBudget = val;
         saveToLocalStorage();
         renderHome();
-        showToast('Đã cập nhật hạn mức chi tiêu!');
+        showToast('Đã cập nhật hạn mức chi tiêu tháng!');
+      } else {
+        alert('Vui lòng nhập số tiền hợp lệ!');
       }
     }
 
@@ -910,8 +1145,9 @@
       reader.onload = function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
-          if (parsed.wallets && parsed.transactions) {
+          if (parsed && (parsed.cards || parsed.wallets || parsed.transactions)) {
             appData = parsed;
+            ensureDataIntegrity();
             saveToLocalStorage();
             renderAll();
             showToast('Nhập dữ liệu thành công!');
@@ -919,7 +1155,7 @@
             alert('File JSON không đúng cấu trúc ứng dụng!');
           }
         } catch (err) {
-          alert('Không thể đọc file JSON này!');
+          alert('Không thể đọc file JSON này: ' + err.message);
         }
       };
       reader.readAsText(file);
@@ -937,6 +1173,7 @@
         if (!res.ok) throw new Error("HTTP error " + res.status);
         const data = await res.json();
         appData = data;
+        ensureDataIntegrity();
         appData.settings.githubDbUrl = url;
         saveToLocalStorage();
         renderAll();
@@ -952,31 +1189,263 @@
           const res = await fetch('./database.json');
           if (res.ok) {
             appData = await res.json();
+            ensureDataIntegrity();
             saveToLocalStorage();
             renderAll();
-            showToast('Đã khôi phục dữ liệu gốc!');
+            showToast('Đã khôi phục dữ liệu từ database.json!');
           }
         } catch (e) {
-          alert('Không thể đọc file database.json cục bộ');
+          alert('Không thể đọc file database.json cục bộ: ' + e.message);
         }
       }
     }
 
     function clearAllData() {
-      if (confirm('CẢNH BÁO: Thao tác này sẽ xóa toàn bộ giao dịch và cài đặt lưu trên trình duyệt!')) {
-        localStorage.removeItem('fintech_pwa_data');
-        location.reload();
+      if (confirm('CẢNH BÁO: Thao tác này sẽ xóa sạch toàn bộ ví, thẻ, giao dịch, mục tiêu để tạo Database mới hoàn toàn?')) {
+        appData = {
+          settings: {
+            currency: "VND",
+            pin: "1234",
+            theme: appData.settings?.theme || "dark",
+            dailyBudget: 500000,
+            monthlyBudget: 15000000,
+            githubDbUrl: ""
+          },
+          cards: [],
+          categories: [
+            { id: "cat_food", name: "Ăn uống", type: "expense", icon: "utensils", color: "#f97316" },
+            { id: "cat_shopping", name: "Mua sắm", type: "expense", icon: "shopping-bag", color: "#ec4899" },
+            { id: "cat_transport", name: "Di chuyển", type: "expense", icon: "car", color: "#3b82f6" },
+            { id: "cat_bills", name: "Hóa đơn & Nhà ở", type: "expense", icon: "receipt", color: "#ef4444" },
+            { id: "cat_entertainment", name: "Giải trí & Du lịch", type: "expense", icon: "film", color: "#8b5cf6" },
+            { id: "cat_education", name: "Học tập & Sách", type: "expense", icon: "graduation-cap", color: "#06b6d4" },
+            { id: "cat_salary", name: "Lương tháng", type: "income", icon: "coins", color: "#10b981" },
+            { id: "cat_bonus", name: "Thưởng & Dự án", type: "income", icon: "award", color: "#14b8a6" },
+            { id: "cat_invest", name: "Đầu tư / Lãi", type: "income", icon: "trending-up", color: "#6366f1" }
+          ],
+          goals: [],
+          transactions: [],
+          notifications: []
+        };
+        saveToLocalStorage();
+        renderAll();
+        showToast('Đã xóa sạch database và bắt đầu mới!');
       }
     }
 
-    // Navigation Switch
+    // ==========================================
+    // NOTIFICATION & DAILY BUDGET SYSTEM (Requirement 04)
+    // ==========================================
+    function getTodayExpense() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const d = now.getDate();
+      return (appData.transactions || []).filter(tx => {
+        if (tx.type !== 'expense') return false;
+        const txD = new Date(tx.date);
+        return txD.getFullYear() === y && txD.getMonth() === m && txD.getDate() === d;
+      }).reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    }
+
+    function evaluateDailyBudgetNotifications(autoOpenPopup = false) {
+      if (!appData.notifications) appData.notifications = [];
+      const todayExpense = getTodayExpense();
+      const dailyLimit = Number(appData.settings?.dailyBudget) || 500000;
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+      let hasNewExceeded = false;
+
+      if (todayExpense > dailyLimit) {
+        const exceededAmount = todayExpense - dailyLimit;
+        let notif = appData.notifications.find(n => n.dateStr === todayStr && n.type === 'exceeded');
+        if (!notif) {
+          notif = {
+            id: 'notif_exc_' + Date.now(),
+            type: 'exceeded',
+            dateStr: todayStr,
+            title: '🚨 Vượt hạn mức chi tiêu hôm nay!',
+            message: `Hôm nay bạn đã chi ${formatMoney(todayExpense)}, vượt ${formatMoney(exceededAmount)} so với hạn mức ngày (${formatMoney(dailyLimit)}).`,
+            createdAt: Date.now(),
+            read: false,
+            readAt: null
+          };
+          appData.notifications.unshift(notif);
+          hasNewExceeded = true;
+        } else {
+          notif.message = `Hôm nay bạn đã chi ${formatMoney(todayExpense)}, vượt ${formatMoney(exceededAmount)} so với hạn mức ngày (${formatMoney(dailyLimit)}).`;
+        }
+        saveToLocalStorage();
+      } else if (todayExpense >= dailyLimit * 0.8 && todayExpense > 0) {
+        const remaining = dailyLimit - todayExpense;
+        let notif = appData.notifications.find(n => n.dateStr === todayStr && (n.type === 'warning' || n.type === 'exceeded'));
+        if (!notif) {
+          notif = {
+            id: 'notif_warn_' + Date.now(),
+            type: 'warning',
+            dateStr: todayStr,
+            title: '⚠️ Sắp chạm hạn mức hôm nay!',
+            message: `Hôm nay bạn đã chi ${formatMoney(todayExpense)} (${Math.round((todayExpense / dailyLimit) * 100)}%). Chỉ còn lại ${formatMoney(remaining)} cho hôm nay.`,
+            createdAt: Date.now(),
+            read: false,
+            readAt: null
+          };
+          appData.notifications.unshift(notif);
+          hasNewExceeded = true;
+          saveToLocalStorage();
+        }
+      }
+
+      updateNotificationBadge();
+
+      // Auto-open popup if newly exceeded or user just made an action causing an unread alert
+      if (autoOpenPopup && hasNewExceeded) {
+        setTimeout(() => openNotificationModal(), 350);
+      }
+    }
+
+    // Auto-delete after 3 days if read; keep notifying if unread!
+    function cleanExpiredNotifications() {
+      if (!appData.notifications) appData.notifications = [];
+      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const prevCount = appData.notifications.length;
+
+      appData.notifications = appData.notifications.filter(n => {
+        // Chưa xem: CỨ THÔNG BÁO TIẾP (không xóa!)
+        if (!n.read) return true;
+        // Đã xem: sau 3 ngày kể từ readAt mới tự động xóa
+        const readAge = now - (n.readAt || n.createdAt);
+        return readAge < THREE_DAYS_MS;
+      });
+
+      if (appData.notifications.length !== prevCount) {
+        saveToLocalStorage();
+      }
+    }
+
+    function updateNotificationBadge() {
+      cleanExpiredNotifications();
+      const unreadCount = (appData.notifications || []).filter(n => !n.read).length;
+      const badge = document.getElementById('notif-badge');
+      const countEl = document.getElementById('notif-badge-count');
+      if (unreadCount > 0) {
+        badge.classList.remove('hidden');
+        countEl.innerText = unreadCount > 9 ? '9+' : unreadCount;
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function openNotificationModal() {
+      cleanExpiredNotifications();
+      renderNotifications();
+      document.getElementById('notification-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeNotificationModal() {
+      document.getElementById('notification-modal').classList.add('hidden');
+    }
+
+    function renderNotifications() {
+      const container = document.getElementById('notifications-list');
+      if (!appData.notifications || appData.notifications.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-zinc-500 space-y-2">
+            <i data-lucide="check-circle-2" class="w-8 h-8 text-emerald-500 mx-auto"></i>
+            <p class="text-xs font-semibold">Tuyệt vời! Bạn không có cảnh báo nào.</p>
+            <p class="text-[11px] text-zinc-400">Chi tiêu trong ngày vẫn đang được kiểm soát tốt.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const now = Date.now();
+      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+      container.innerHTML = appData.notifications.map(n => {
+        const isExceeded = n.type === 'exceeded';
+        const isRead = !!n.read;
+        const iconColor = isExceeded ? 'text-rose-500 bg-rose-500/10' : 'text-amber-500 bg-amber-500/10';
+        const iconName = isExceeded ? 'alert-triangle' : 'alarm-clock';
+
+        let autoDeleteNote = "";
+        if (isRead) {
+          const timeLeftMs = THREE_DAYS_MS - (now - (n.readAt || n.createdAt));
+          const daysLeft = Math.max(1, Math.ceil(timeLeftMs / (24 * 60 * 60 * 1000)));
+          autoDeleteNote = `<span class="text-[10px] text-emerald-500 font-semibold">• Tự xóa sau ${daysLeft} ngày</span>`;
+        } else {
+          autoDeleteNote = `<span class="text-[10px] text-rose-500 font-semibold">• Chưa xem (cứ thông báo)</span>`;
+        }
+
+        return `
+          <div class="p-4 rounded-2xl border ${isRead ? 'bg-zinc-50/60 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800 opacity-80' : 'bg-white dark:bg-zinc-900 border-rose-300 dark:border-rose-900/60 shadow-md'} space-y-2.5 transition">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl ${iconColor} flex items-center justify-center shrink-0">
+                  <i data-lucide="${iconName}" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs sm:text-sm font-bold tracking-tight">${n.title}</h4>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="text-[10px] text-zinc-400">${new Date(n.createdAt).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})} ${new Date(n.createdAt).toLocaleDateString('vi-VN')}</span>
+                    ${autoDeleteNote}
+                  </div>
+                </div>
+              </div>
+              <button onclick="deleteNotification('${n.id}')" title="Xóa thông báo" class="text-zinc-400 hover:text-rose-500 p-1 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <p class="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium pl-11">
+              ${n.message}
+            </p>
+            ${!isRead ? `
+              <div class="pl-11 pt-1">
+                <button onclick="markNotificationAsRead('${n.id}')" class="px-3.5 py-1.5 rounded-xl bg-zinc-900 text-white dark:bg-emerald-500 dark:text-zinc-950 font-bold text-xs shadow hover:opacity-90 active:scale-95 transition flex items-center gap-1.5">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  <span>Đã xem (Bắt đầu đếm 3 ngày)</span>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function markNotificationAsRead(id) {
+      const notif = appData.notifications.find(n => n.id === id);
+      if (notif) {
+        notif.read = true;
+        notif.readAt = Date.now();
+        saveToLocalStorage();
+        renderNotifications();
+        updateNotificationBadge();
+        showToast('Đã đánh dấu đã xem! Thông báo sẽ tự xóa sau 3 ngày.');
+      }
+    }
+
+    function deleteNotification(id) {
+      appData.notifications = appData.notifications.filter(n => n.id !== id);
+      saveToLocalStorage();
+      renderNotifications();
+      updateNotificationBadge();
+      showToast('Đã xóa thông báo!');
+    }
+
+    // ==========================================
+    // NAVIGATION SWITCH
+    // ==========================================
     function switchTab(tabName) {
-      // Hide all panes
       document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
       const activePane = document.getElementById(`tab-${tabName}`);
       if (activePane) activePane.classList.remove('hidden');
 
-      // Update sidebar nav desktop
+      // Update sidebar desktop
       document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('text-emerald-600', 'dark:text-emerald-400', 'bg-emerald-50', 'dark:bg-emerald-950/40');
         btn.classList.add('text-zinc-600', 'dark:text-zinc-400');
@@ -987,7 +1456,7 @@
         activeDesktopBtn.classList.add('text-emerald-600', 'dark:text-emerald-400', 'bg-emerald-50', 'dark:bg-emerald-950/40');
       }
 
-      // Update mobile nav
+      // Update mobile dock
       document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
         btn.classList.remove('text-emerald-400');
         btn.classList.add('text-zinc-400');
@@ -999,26 +1468,26 @@
       }
 
       if (tabName === 'analytics') {
-        setTimeout(renderCharts, 100);
+        setTimeout(renderReports, 100);
       }
       lucide.createIcons();
     }
 
-    // Render Everything
+    // ==========================================
+    // RENDER FUNCTIONS
+    // ==========================================
     function renderAll() {
       renderHome();
-      renderWallets();
+      renderCards();
       renderGoals();
+      renderReports();
       renderSettings();
+      updateNotificationBadge();
       lucide.createIcons();
     }
 
     function renderHome() {
-      // Calculate Total Balance
-      const totalBalance = appData.wallets.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
-      document.getElementById('total-balance-display').innerText = formatMoney(totalBalance);
-
-      // Monthly Income & Expense
+      // 1. Calculate Monthly Net Flow (Total Month Income - Total Month Expense)
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
@@ -1026,7 +1495,7 @@
       let monthIncome = 0;
       let monthExpense = 0;
 
-      appData.transactions.forEach(tx => {
+      (appData.transactions || []).forEach(tx => {
         const txDate = new Date(tx.date);
         if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
           if (tx.type === 'income') monthIncome += Number(tx.amount);
@@ -1034,30 +1503,44 @@
         }
       });
 
+      const monthNet = monthIncome - monthExpense;
+      const netPrefix = monthNet > 0 ? "+" : "";
+      document.getElementById('total-balance-display').innerText = isBalanceHidden ? "••••••••" : (netPrefix + formatMoney(monthNet));
       document.getElementById('month-income-display').innerText = formatMoney(monthIncome);
       document.getElementById('month-expense-display').innerText = formatMoney(monthExpense);
 
-      // Budget Progress
-      const budgetLimit = appData.settings.monthlyBudget || 15000000;
-      const budgetPct = Math.min(100, Math.round((monthExpense / budgetLimit) * 100));
-      document.getElementById('budget-ratio-text').innerText = `${(monthExpense).toLocaleString('vi-VN')} ₫ / ${(budgetLimit).toLocaleString('vi-VN')} ₫`;
-      document.getElementById('budget-percent-badge').innerText = `${budgetPct}% ngân sách`;
-      document.getElementById('budget-progress-bar').style.width = `${budgetPct}%`;
+      // 2. Daily Budget Progress (Requirement 04)
+      const todayExpense = getTodayExpense();
+      const dailyLimit = Number(appData.settings?.dailyBudget) || 500000;
+      const dailyPct = Math.min(100, Math.round((todayExpense / dailyLimit) * 100));
 
-      if (budgetPct > 90) {
-        document.getElementById('budget-progress-bar').className = "bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full transition-all duration-500";
+      document.getElementById('daily-budget-ratio-text').innerText = `${(todayExpense).toLocaleString('vi-VN')} ₫ / ${(dailyLimit).toLocaleString('vi-VN')} ₫`;
+      const dailyBadge = document.getElementById('daily-budget-status-badge');
+      const dailyBar = document.getElementById('daily-budget-progress-bar');
+      dailyBar.style.width = `${dailyPct}%`;
+
+      if (todayExpense > dailyLimit) {
+        const overAmount = todayExpense - dailyLimit;
+        dailyBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-500";
+        dailyBadge.innerText = `⚠️ Vượt hạn mức: +${formatMoney(overAmount)}`;
+        dailyBar.className = "bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full transition-all duration-500";
       } else {
-        document.getElementById('budget-progress-bar').className = "bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500";
+        const remAmount = dailyLimit - todayExpense;
+        dailyBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
+        dailyBadge.innerText = `Còn lại: ${formatMoney(remAmount)}`;
+        dailyBar.className = "bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500";
       }
 
-      // Recent Transactions (top 5)
-      const sortedTx = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
-      const recentListEl = document.getElementById('recent-transactions-list');
-      recentListEl.innerHTML = sortedTx.slice(0, 5).map(renderTransactionRow).join('') || `<p class="text-xs text-zinc-500 py-4 text-center">Chưa có giao dịch nào.</p>`;
+      // 3. Monthly Budget Progress
+      const monthlyLimit = Number(appData.settings?.monthlyBudget) || 15000000;
+      const monthlyPct = Math.min(100, Math.round((monthExpense / monthlyLimit) * 100));
+      document.getElementById('budget-ratio-text').innerText = `${(monthExpense).toLocaleString('vi-VN')} ₫ / ${(monthlyLimit).toLocaleString('vi-VN')} ₫`;
+      document.getElementById('budget-percent-badge').innerText = `${monthlyPct}% ngân sách tháng`;
+      document.getElementById('budget-progress-bar').style.width = `${monthlyPct}%`;
 
-      // Goals preview (top 2)
+      // 4. Goals preview (top 2)
       const homeGoalsEl = document.getElementById('home-goals-list');
-      homeGoalsEl.innerHTML = appData.goals.slice(0, 2).map(g => {
+      homeGoalsEl.innerHTML = (appData.goals || []).slice(0, 2).map(g => {
         const pct = Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100));
         return `
           <div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-2.5">
@@ -1078,22 +1561,24 @@
             </div>
           </div>
         `;
-      }).join('') || `<p class="text-xs text-zinc-500 py-2 text-center">Chưa có mục tiêu nào.</p>`;
+      }).join('') || `<p class="text-xs text-zinc-500 py-3 text-center">Chưa có mục tiêu nào.</p>`;
 
-      // Full transactions for analytics
-      document.getElementById('all-transactions-list').innerHTML = sortedTx.map(renderTransactionRow).join('') || `<p class="text-xs text-zinc-500 py-4 text-center">Chưa có giao dịch.</p>`;
+      // 5. Recent Transactions (top 5) with Edit & Delete (Requirement 03)
+      const sortedTx = [...(appData.transactions || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const recentListEl = document.getElementById('recent-transactions-list');
+      recentListEl.innerHTML = sortedTx.slice(0, 5).map(renderTransactionRow).join('') || `<p class="text-xs text-zinc-500 py-4 text-center">Chưa có giao dịch nào.</p>`;
     }
 
     function renderTransactionRow(tx) {
       const cat = appData.categories.find(c => c.id === tx.category) || { name: 'Khác', icon: 'tag', color: '#64748b' };
-      const wallet = appData.wallets.find(w => w.id === tx.walletId) || { name: 'Ví' };
+      const card = (appData.cards || []).find(c => c.id === tx.walletId) || { name: 'Ví / Thẻ' };
       const isIncome = tx.type === 'income';
-      const formattedDate = new Date(tx.date).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const formattedDate = formatDateTimeDisplay(tx.date);
 
       return `
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background-color: ${cat.color}20; color: ${cat.color};">
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style="background-color: ${cat.color}20; color: ${cat.color};">
               <i data-lucide="${cat.icon || 'activity'}" class="w-5 h-5"></i>
             </div>
             <div>
@@ -1101,65 +1586,220 @@
               <div class="flex items-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                 <span>${cat.name}</span>
                 <span>•</span>
-                <span class="px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800">${wallet.name}</span>
+                <span class="px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 font-medium">${card.name}</span>
                 <span>•</span>
-                <span>${formattedDate}</span>
+                <span class="font-mono">${formattedDate}</span>
               </div>
             </div>
           </div>
-          <div class="text-right">
+          <div class="text-right shrink-0">
             <p class="text-xs sm:text-sm font-extrabold ${isIncome ? 'text-emerald-500' : 'text-zinc-900 dark:text-zinc-100'}">
               ${isIncome ? '+' : '-'}${formatMoney(tx.amount)}
             </p>
-            <button onclick="deleteTransaction('${tx.id}')" class="text-[10px] text-zinc-400 hover:text-rose-500 transition">Xóa</button>
+            <div class="flex items-center justify-end gap-2 mt-0.5">
+              <button onclick="editTransaction('${tx.id}')" class="text-[10px] font-semibold text-emerald-500 hover:underline">Sửa</button>
+              <span class="text-zinc-300 dark:text-zinc-700">|</span>
+              <button onclick="deleteTransaction('${tx.id}')" class="text-[10px] font-semibold text-zinc-400 hover:text-rose-500">Xóa</button>
+            </div>
           </div>
         </div>
       `;
     }
 
-    // Render Wallets (Media 1 & 5 Credit Cards Style)
-    function renderWallets() {
-      const container = document.getElementById('wallets-grid');
-      container.innerHTML = appData.wallets.map(w => {
+    // ==========================================
+    // CARDS & PAYMENT METHODS (Requirement 01 & 03)
+    // No balance required, unified with payment methods!
+    // ==========================================
+    function renderCards() {
+      const container = document.getElementById('cards-grid');
+      if (!appData.cards || appData.cards.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 px-4 text-center rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+              <i data-lucide="credit-card" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="font-bold text-sm">Chưa có Thẻ / Phương thức thanh toán nào</p>
+              <p class="text-xs text-zinc-500 mt-1">Thêm các thẻ ngân hàng, ví MoMo, hoặc tiền mặt để chọn khi ghi chép thu chi.</p>
+            </div>
+            <button onclick="openCardModal()" class="px-5 py-2.5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-2xl text-xs font-bold shadow active:scale-95 transition">
+              + Thêm Thẻ / Ví đầu tiên
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = appData.cards.map(c => {
+        // Calculate total expenses made with this card
+        const cardTotalExpense = (appData.transactions || [])
+          .filter(t => t.walletId === c.id && t.type === 'expense')
+          .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
         return `
-          <div class="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br ${w.color || 'from-zinc-800 to-zinc-950'} text-white shadow-xl border border-white/10 flex flex-col justify-between min-h-[170px]">
-            <!-- Card Chip & Type -->
+          <div class="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br ${c.color || 'from-blue-600 to-indigo-900'} text-white shadow-xl border border-white/10 flex flex-col justify-between min-h-[175px]">
+            <!-- Card Chip & Type & Actions -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-8 h-6 rounded-md bg-amber-400/90 border border-amber-600 flex items-center justify-center">
                   <div class="w-4 h-3 border border-amber-800/40 rounded-sm"></div>
                 </div>
-                <span class="text-xs font-semibold uppercase tracking-wider text-white/80">${w.type}</span>
+                <span class="text-xs font-semibold uppercase tracking-wider text-white/80">${getCardTypeLabel(c.type)}</span>
               </div>
-              <i data-lucide="${w.icon || 'credit-card'}" class="w-5 h-5 text-white/70"></i>
+              <div class="flex items-center gap-1.5">
+                <button onclick="editCard('${c.id}')" title="Sửa thẻ này" class="p-1.5 rounded-xl bg-black/20 hover:bg-white/20 text-white transition">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteCard('${c.id}')" title="Xóa thẻ này" class="p-1.5 rounded-xl bg-black/20 hover:bg-rose-500/80 text-white transition">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
             </div>
 
-            <!-- Balance -->
+            <!-- Card Info (No balance, tracks spent total) -->
             <div class="my-4">
-              <p class="text-xs text-white/70 mb-0.5">Số dư khả dụng</p>
-              <h3 class="text-2xl font-black tracking-tight">${formatMoney(w.balance)}</h3>
+              <p class="text-xs text-white/70 mb-0.5">Tổng chi tiêu qua thẻ này</p>
+              <h3 class="text-2xl font-black tracking-tight">${formatMoney(cardTotalExpense)}</h3>
             </div>
 
             <!-- Bottom Details -->
             <div class="flex items-center justify-between text-xs text-white/80 font-mono">
-              <span>${w.name}</span>
-              <span>${w.accountNumber ? '•••• ' + w.accountNumber : 'ACTIVE'}</span>
+              <span class="font-bold text-sm tracking-wide">${c.name}</span>
+              <span>${c.accountNumber ? '•••• ' + c.accountNumber : 'LIÊN KẾT'}</span>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    // Render Goals (Media 3 style)
+    function getCardTypeLabel(type) {
+      switch(type) {
+        case 'bank': return 'Ngân hàng';
+        case 'credit': return 'Tín dụng';
+        case 'ewallet': return 'Ví điện tử';
+        case 'cash': return 'Tiền mặt';
+        default: return 'Thanh toán';
+      }
+    }
+
+    function selectCardColor(color) {
+      selectedCardColor = color;
+      document.getElementById('card-color').value = color;
+    }
+
+    function openCardModal() {
+      document.getElementById('card-edit-id').value = '';
+      document.getElementById('card-modal-title').innerText = 'Thêm Thẻ / Ví thanh toán';
+      document.getElementById('card-name').value = '';
+      document.getElementById('card-type').value = 'bank';
+      document.getElementById('card-number').value = '';
+      selectCardColor('from-blue-600 to-indigo-900');
+      document.getElementById('card-submit-btn').innerText = 'Lưu Thẻ / Ví';
+      document.getElementById('card-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function editCard(cardId) {
+      const card = (appData.cards || []).find(c => c.id === cardId);
+      if (!card) return;
+      document.getElementById('card-edit-id').value = card.id;
+      document.getElementById('card-modal-title').innerText = 'Chỉnh sửa Thẻ / Ví';
+      document.getElementById('card-name').value = card.name;
+      document.getElementById('card-type').value = card.type || 'bank';
+      document.getElementById('card-number').value = card.accountNumber || '';
+      selectCardColor(card.color || 'from-blue-600 to-indigo-900');
+      document.getElementById('card-submit-btn').innerText = 'Cập nhật Thẻ / Ví';
+      document.getElementById('card-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCardModal() {
+      document.getElementById('card-modal').classList.add('hidden');
+    }
+
+    function submitCard() {
+      const name = document.getElementById('card-name').value.trim();
+      const type = document.getElementById('card-type').value;
+      const accountNumber = document.getElementById('card-number').value.trim();
+      const color = selectedCardColor;
+      const editId = document.getElementById('card-edit-id').value;
+
+      if (!name) {
+        alert('Vui lòng nhập tên Thẻ hoặc Ví!');
+        return;
+      }
+
+      if (!appData.cards) appData.cards = [];
+
+      if (editId) {
+        // Edit existing card
+        const card = appData.cards.find(c => c.id === editId);
+        if (card) {
+          card.name = name;
+          card.type = type;
+          card.accountNumber = accountNumber;
+          card.color = color;
+          showToast(`Đã cập nhật "${name}" thành công!`);
+        }
+      } else {
+        // Add new card
+        appData.cards.push({
+          id: 'card_' + Date.now(),
+          name,
+          type,
+          accountNumber,
+          color,
+          icon: type === 'bank' ? 'building-2' : type === 'cash' ? 'wallet' : 'credit-card'
+        });
+        showToast(`Đã thêm "${name}" thành công!`);
+      }
+
+      saveToLocalStorage();
+      closeCardModal();
+      renderAll();
+    }
+
+    function deleteCard(cardId) {
+      const card = (appData.cards || []).find(c => c.id === cardId);
+      if (!card) return;
+      if (confirm(`Bạn có chắc muốn xóa thẻ "${card.name}" không?`)) {
+        appData.cards = appData.cards.filter(c => c.id !== cardId);
+        saveToLocalStorage();
+        renderAll();
+        showToast(`Đã xóa thẻ "${card.name}"!`);
+      }
+    }
+
+    // ==========================================
+    // GOALS MANAGEMENT (Requirement 03: Edit & Delete)
+    // ==========================================
     function renderGoals() {
       const container = document.getElementById('goals-full-list');
+      if (!appData.goals || appData.goals.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 px-4 text-center rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+              <i data-lucide="target" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="font-bold text-sm">Chưa có mục tiêu tiết kiệm</p>
+              <p class="text-xs text-zinc-500 mt-1">Tạo mục tiêu như Mua xe, Du lịch, Quỹ dự phòng, Mua máy tính...</p>
+            </div>
+            <button onclick="openGoalModal()" class="px-5 py-2.5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-2xl text-xs font-bold shadow active:scale-95 transition">
+              + Thêm mục tiêu mới
+            </button>
+          </div>
+        `;
+        return;
+      }
+
       container.innerHTML = appData.goals.map(g => {
         const pct = Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100));
         return `
           <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
             <div class="flex items-start justify-between">
               <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <i data-lucide="${g.icon || 'target'}" class="w-5 h-5"></i>
                 </div>
                 <div>
@@ -1167,7 +1807,15 @@
                   <p class="text-xs text-zinc-500">Hạn chót: ${g.deadline || 'Chưa định'}</p>
                 </div>
               </div>
-              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500">${pct}%</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="editGoal('${g.id}')" title="Sửa mục tiêu" class="text-zinc-400 hover:text-emerald-500 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteGoal('${g.id}')" title="Xóa mục tiêu" class="text-zinc-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 ml-1">${pct}%</span>
+              </div>
             </div>
 
             <div class="space-y-1.5">
@@ -1190,120 +1838,115 @@
       }).join('');
     }
 
-    function renderSettings() {
-      document.getElementById('input-monthly-budget').value = appData.settings.monthlyBudget || 15000000;
-      if (appData.settings.githubDbUrl) {
-        document.getElementById('input-github-db-url').value = appData.settings.githubDbUrl;
+    function openGoalModal() {
+      document.getElementById('goal-edit-id').value = '';
+      document.getElementById('goal-modal-title').innerText = 'Thêm mục tiêu tích lũy';
+      document.getElementById('goal-name').value = '';
+      document.getElementById('goal-target').value = '';
+      document.getElementById('goal-current').value = '';
+      document.getElementById('goal-deadline').value = '';
+      document.getElementById('goal-submit-btn').innerText = 'Tạo mục tiêu';
+      document.getElementById('goal-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function editGoal(goalId) {
+      const goal = (appData.goals || []).find(g => g.id === goalId);
+      if (!goal) return;
+      document.getElementById('goal-edit-id').value = goal.id;
+      document.getElementById('goal-modal-title').innerText = 'Chỉnh sửa mục tiêu';
+      document.getElementById('goal-name').value = goal.name;
+      document.getElementById('goal-target').value = goal.targetAmount;
+      document.getElementById('goal-current').value = goal.currentAmount || 0;
+      document.getElementById('goal-deadline').value = goal.deadline || '';
+      document.getElementById('goal-submit-btn').innerText = 'Cập nhật mục tiêu';
+      document.getElementById('goal-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeGoalModal() {
+      document.getElementById('goal-modal').classList.add('hidden');
+    }
+
+    function submitGoal() {
+      const name = document.getElementById('goal-name').value.trim();
+      const target = Number(document.getElementById('goal-target').value);
+      const current = Number(document.getElementById('goal-current').value) || 0;
+      const deadline = document.getElementById('goal-deadline').value;
+      const editId = document.getElementById('goal-edit-id').value;
+
+      if (!name || !target) {
+        alert('Vui lòng điền đủ tên và số tiền mục tiêu!');
+        return;
+      }
+
+      if (!appData.goals) appData.goals = [];
+
+      if (editId) {
+        const goal = appData.goals.find(g => g.id === editId);
+        if (goal) {
+          goal.name = name;
+          goal.targetAmount = target;
+          goal.currentAmount = current;
+          goal.deadline = deadline;
+          showToast(`Đã cập nhật mục tiêu "${name}"!`);
+        }
+      } else {
+        appData.goals.push({
+          id: 'g_' + Date.now(),
+          name,
+          targetAmount: target,
+          currentAmount: current,
+          deadline,
+          icon: 'target',
+          color: '#10b981'
+        });
+        showToast('Đã thêm mục tiêu mới!');
+      }
+
+      saveToLocalStorage();
+      closeGoalModal();
+      renderAll();
+    }
+
+    function topUpGoal(goalId) {
+      const amountStr = prompt('Nhập số tiền bạn muốn nạp thêm vào mục tiêu này (VNĐ):');
+      if (amountStr && Number(amountStr) > 0) {
+        const goal = (appData.goals || []).find(g => g.id === goalId);
+        if (goal) {
+          goal.currentAmount += Number(amountStr);
+          saveToLocalStorage();
+          renderAll();
+          showToast('Đã cộng tiền tích lũy thành công!');
+        }
       }
     }
 
-    // Chart.js Rendering (Donut & Weekly Bar Chart)
-    function renderCharts() {
-      const isDark = document.documentElement.classList.contains('dark');
-      const textColor = isDark ? '#a1a1aa' : '#52525b';
-      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-      // 1. Category Expense breakdown
-      const expenseMap = {};
-      appData.transactions.filter(t => t.type === 'expense').forEach(tx => {
-        expenseMap[tx.category] = (expenseMap[tx.category] || 0) + Number(tx.amount);
-      });
-
-      const catLabels = [];
-      const catData = [];
-      const catColors = [];
-
-      Object.keys(expenseMap).forEach(catId => {
-        const cat = appData.categories.find(c => c.id === catId) || { name: 'Khác', color: '#64748b' };
-        catLabels.push(cat.name);
-        catData.push(expenseMap[catId]);
-        catColors.push(cat.color);
-      });
-
-      // Update legend html
-      const legendEl = document.getElementById('category-legend');
-      legendEl.innerHTML = catLabels.map((name, i) => `
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full" style="background-color: ${catColors[i]}"></span>
-          <span class="truncate font-medium text-zinc-600 dark:text-zinc-400">${name}: <b>${(catData[i]).toLocaleString('vi-VN')}₫</b></span>
-        </div>
-      `).join('');
-
-      const donutCtx = document.getElementById('categoryDonutChart').getContext('2d');
-      if (categoryChartInstance) categoryChartInstance.destroy();
-      categoryChartInstance = new Chart(donutCtx, {
-        type: 'doughnut',
-        data: {
-          labels: catLabels,
-          datasets: [{
-            data: catData.length ? catData : [1],
-            backgroundColor: catColors.length ? catColors : ['#71717a'],
-            borderWidth: 0,
-            hoverOffset: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          cutout: '72%'
-        }
-      });
-
-      // 2. Weekly Bar Chart (Chi tiêu 7 ngày qua)
-      const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-      const weekData = [0, 0, 0, 0, 0, 0, 0];
-      const today = new Date();
-
-      appData.transactions.filter(t => t.type === 'expense').forEach(tx => {
-        const d = new Date(tx.date);
-        const diffDays = Math.floor((today - d) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 0 && diffDays < 7) {
-          weekData[d.getDay()] += Number(tx.amount);
-        }
-      });
-
-      const barCtx = document.getElementById('weeklyBarChart').getContext('2d');
-      if (weeklyChartInstance) weeklyChartInstance.destroy();
-      weeklyChartInstance = new Chart(barCtx, {
-        type: 'bar',
-        data: {
-          labels: days,
-          datasets: [{
-            label: 'Chi tiêu',
-            data: weekData,
-            backgroundColor: '#10b981',
-            borderRadius: 8,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: textColor }
-            },
-            y: {
-              grid: { color: gridColor },
-              ticks: {
-                color: textColor,
-                callback: (val) => (val >= 1000000 ? (val / 1000000) + 'tr' : (val / 1000) + 'k')
-              }
-            }
-          }
-        }
-      });
+    function deleteGoal(goalId) {
+      const goal = (appData.goals || []).find(g => g.id === goalId);
+      if (!goal) return;
+      if (confirm(`Bạn có chắc muốn xóa mục tiêu "${goal.name}" không?`)) {
+        appData.goals = appData.goals.filter(g => g.id !== goalId);
+        saveToLocalStorage();
+        renderAll();
+        showToast(`Đã xóa mục tiêu "${goal.name}"!`);
+      }
     }
 
-    // Transaction Modal Controls
+    // ==========================================
+    // TRANSACTIONS MANAGEMENT (Requirement 03: Edit & Delete)
+    // ==========================================
     function openTransactionModal(type = 'expense') {
+      if (!appData.cards || appData.cards.length === 0) {
+        alert('Bạn chưa có Thẻ / Ví thanh toán nào! Vui lòng tạo ít nhất một phương thức thanh toán trước khi thêm giao dịch.');
+        openCardModal();
+        return;
+      }
+
+      document.getElementById('tx-edit-id').value = '';
+      document.getElementById('tx-modal-title').innerText = 'Thêm giao dịch mới';
+      document.getElementById('tx-submit-btn').innerText = 'Lưu giao dịch';
+
       currentTxType = type;
       setTxType(type);
 
@@ -1312,15 +1955,42 @@
       const filteredCats = appData.categories.filter(c => c.type === currentTxType);
       catSelect.innerHTML = filteredCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
-      // Populate Wallets
+      // Populate Cards
       const walletSelect = document.getElementById('tx-wallet');
-      walletSelect.innerHTML = appData.wallets.map(w => `<option value="${w.id}">${w.name} (${formatMoney(w.balance)})</option>`).join('');
+      walletSelect.innerHTML = appData.cards.map(c => `<option value="${c.id}">${c.name} (${getCardTypeLabel(c.type)})</option>`).join('');
 
-      // Set default date to now
-      const nowStr = new Date().toISOString().slice(0, 16);
-      document.getElementById('tx-date').value = nowStr;
+      // Set default date to current local datetime
+      document.getElementById('tx-date').value = getLocalDateTimeString(new Date());
       document.getElementById('tx-amount').value = '';
       document.getElementById('tx-note').value = '';
+
+      document.getElementById('transaction-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function editTransaction(txId) {
+      const tx = (appData.transactions || []).find(t => t.id === txId);
+      if (!tx) return;
+
+      document.getElementById('tx-edit-id').value = tx.id;
+      document.getElementById('tx-modal-title').innerText = 'Chỉnh sửa giao dịch';
+      document.getElementById('tx-submit-btn').innerText = 'Cập nhật giao dịch';
+
+      currentTxType = tx.type;
+      setTxType(tx.type);
+
+      // Populate Categories
+      const catSelect = document.getElementById('tx-category');
+      const filteredCats = appData.categories.filter(c => c.type === currentTxType);
+      catSelect.innerHTML = filteredCats.map(c => `<option value="${c.id}" ${c.id === tx.category ? 'selected' : ''}>${c.name}</option>`).join('');
+
+      // Populate Cards
+      const walletSelect = document.getElementById('tx-wallet');
+      walletSelect.innerHTML = (appData.cards || []).map(c => `<option value="${c.id}" ${c.id === tx.walletId ? 'selected' : ''}>${c.name} (${getCardTypeLabel(c.type)})</option>`).join('');
+
+      document.getElementById('tx-amount').value = tx.amount;
+      document.getElementById('tx-note').value = tx.note || '';
+      document.getElementById('tx-date').value = getLocalDateTimeString(new Date(tx.date));
 
       document.getElementById('transaction-modal').classList.remove('hidden');
       lucide.createIcons();
@@ -1357,144 +2027,418 @@
       }
       const category = document.getElementById('tx-category').value;
       const walletId = document.getElementById('tx-wallet').value;
+      if (!walletId) {
+        alert('Vui lòng chọn Thẻ hoặc Ví thanh toán!');
+        return;
+      }
       const note = document.getElementById('tx-note').value.trim();
-      const date = document.getElementById('tx-date').value ? new Date(document.getElementById('tx-date').value).toISOString() : new Date().toISOString();
+      const rawDate = document.getElementById('tx-date').value;
+      const date = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+      const editId = document.getElementById('tx-edit-id').value;
 
-      const newTx = {
-        id: 'tx_' + Date.now(),
-        type: currentTxType,
-        amount: amount,
-        category: category,
-        walletId: walletId,
-        note: note,
-        date: date
-      };
+      if (!appData.transactions) appData.transactions = [];
 
-      // Update wallet balance
-      const wallet = appData.wallets.find(w => w.id === walletId);
-      if (wallet) {
-        if (currentTxType === 'expense') {
-          wallet.balance -= amount;
-        } else {
-          wallet.balance += amount;
+      if (editId) {
+        const tx = appData.transactions.find(t => t.id === editId);
+        if (tx) {
+          tx.type = currentTxType;
+          tx.amount = amount;
+          tx.category = category;
+          tx.walletId = walletId;
+          tx.note = note;
+          tx.date = date;
+          showToast('Đã cập nhật giao dịch thành công!');
         }
+      } else {
+        const newTx = {
+          id: 'tx_' + Date.now(),
+          type: currentTxType,
+          amount: amount,
+          category: category,
+          walletId: walletId,
+          note: note,
+          date: date
+        };
+        appData.transactions.unshift(newTx);
+        showToast('Đã lưu giao dịch thành công!');
       }
 
-      appData.transactions.unshift(newTx);
       saveToLocalStorage();
       closeTransactionModal();
+      evaluateDailyBudgetNotifications(true);
       renderAll();
-      showToast('Đã lưu giao dịch thành công!');
     }
 
     function deleteTransaction(txId) {
       if (confirm('Bạn có chắc muốn xóa giao dịch này?')) {
-        const txIndex = appData.transactions.findIndex(t => t.id === txId);
-        if (txIndex !== -1) {
-          const tx = appData.transactions[txIndex];
-          // Rollback wallet balance
-          const wallet = appData.wallets.find(w => w.id === tx.walletId);
-          if (wallet) {
-            if (tx.type === 'expense') {
-              wallet.balance += Number(tx.amount);
-            } else {
-              wallet.balance -= Number(tx.amount);
+        appData.transactions = (appData.transactions || []).filter(t => t.id !== txId);
+        saveToLocalStorage();
+        evaluateDailyBudgetNotifications(false);
+        renderAll();
+        showToast('Đã xóa giao dịch!');
+      }
+    }
+
+    // ==========================================
+    // REPORTS & ANALYTICS (Requirement 02: Ngày, Tháng, Năm tùy ý)
+    // ==========================================
+    function setReportMode(mode) {
+      reportMode = mode;
+      ['day', 'month', 'year', 'all'].forEach(m => {
+        const btn = document.getElementById(`btn-report-${m}`);
+        if (!btn) return;
+        if (m === mode) {
+          btn.className = "px-3.5 py-2 rounded-xl transition bg-white dark:bg-zinc-900 shadow text-emerald-500 font-bold";
+        } else {
+          btn.className = "px-3.5 py-2 rounded-xl transition text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
+        }
+      });
+      renderReports();
+    }
+
+    function changeReportDay(val) {
+      if (val) {
+        selectedDay = val;
+        renderReports();
+      }
+    }
+
+    function shiftReportDay(delta) {
+      const d = new Date(selectedDay);
+      d.setDate(d.getDate() + delta);
+      selectedDay = d.toISOString().slice(0, 10);
+      renderReports();
+    }
+
+    function goReportToday() {
+      selectedDay = (new Date()).toISOString().slice(0, 10);
+      renderReports();
+    }
+
+    function changeReportMonth(val) {
+      if (val) {
+        selectedMonth = val;
+        renderReports();
+      }
+    }
+
+    function shiftReportMonth(delta) {
+      const parts = selectedMonth.split('-');
+      let y = parseInt(parts[0], 10);
+      let m = parseInt(parts[1], 10) - 1 + delta;
+      const d = new Date(y, m, 1);
+      const pad = (n) => String(n).padStart(2, '0');
+      selectedMonth = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      renderReports();
+    }
+
+    function goReportCurrentMonth() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      selectedMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+      renderReports();
+    }
+
+    function changeReportYear(val) {
+      if (val) {
+        selectedYear = parseInt(val, 10);
+        renderReports();
+      }
+    }
+
+    function shiftReportYear(delta) {
+      selectedYear += delta;
+      renderReports();
+    }
+
+    function goReportCurrentYear() {
+      selectedYear = (new Date()).getFullYear();
+      renderReports();
+    }
+
+    function renderReports() {
+      renderReportDateControls();
+      const filteredTx = getFilteredTransactions();
+
+      // 1. Calculate Period Totals
+      let totalExp = 0;
+      let totalInc = 0;
+      filteredTx.forEach(t => {
+        if (t.type === 'expense') totalExp += Number(t.amount || 0);
+        if (t.type === 'income') totalInc += Number(t.amount || 0);
+      });
+      const net = totalInc - totalExp;
+
+      document.getElementById('report-total-expense').innerText = formatMoney(totalExp);
+      document.getElementById('report-total-income').innerText = formatMoney(totalInc);
+      document.getElementById('report-net-balance').innerText = (net > 0 ? "+" : "") + formatMoney(net);
+
+      // Subtitles
+      let periodName = "";
+      if (reportMode === 'day') {
+        const parts = selectedDay.split('-');
+        periodName = `Ngày ${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (reportMode === 'month') {
+        const parts = selectedMonth.split('-');
+        periodName = `Tháng ${parts[1]}/${parts[0]}`;
+      } else if (reportMode === 'year') {
+        periodName = `Năm ${selectedYear}`;
+      } else {
+        periodName = `Toàn bộ thời gian`;
+      }
+
+      document.getElementById('donut-period-subtitle').innerText = periodName;
+      document.getElementById('bar-chart-subtitle').innerText = periodName;
+      document.getElementById('transactions-count-badge').innerText = `${filteredTx.length} giao dịch`;
+
+      // 2. Render Charts
+      renderReportCharts(filteredTx);
+
+      // 3. Render Transaction List for Chosen Period
+      const listContainer = document.getElementById('all-transactions-list');
+      const sorted = [...filteredTx].sort((a, b) => new Date(b.date) - new Date(a.date));
+      listContainer.innerHTML = sorted.map(renderTransactionRow).join('') || `
+        <div class="py-10 text-center text-zinc-400 bg-white/40 dark:bg-zinc-900/40 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+          <p class="text-xs font-semibold">Không có giao dịch nào trong ${periodName}.</p>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function renderReportDateControls() {
+      const container = document.getElementById('report-date-selector-container');
+      if (reportMode === 'day') {
+        const parts = selectedDay.split('-');
+        const viDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-zinc-500 font-semibold">Chọn ngày:</span>
+            <input type="date" value="${selectedDay}" onchange="changeReportDay(this.value)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono border border-transparent focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="shiftReportDay(-1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">← Ngày trước</button>
+            <button onclick="goReportToday()" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold active:scale-95 transition">Hôm nay</button>
+            <button onclick="shiftReportDay(1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">Ngày sau →</button>
+          </div>
+        `;
+      } else if (reportMode === 'month') {
+        const parts = selectedMonth.split('-');
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-zinc-500 font-semibold">Chọn tháng:</span>
+            <input type="month" value="${selectedMonth}" onchange="changeReportMonth(this.value)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono border border-transparent focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="shiftReportMonth(-1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">← Tháng trước</button>
+            <button onclick="goReportCurrentMonth()" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold active:scale-95 transition">Tháng này</button>
+            <button onclick="shiftReportMonth(1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">Tháng sau →</button>
+          </div>
+        `;
+      } else if (reportMode === 'year') {
+        const currentY = (new Date()).getFullYear();
+        let yearOptions = "";
+        for (let y = currentY - 4; y <= currentY + 3; y++) {
+          yearOptions += `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>Năm ${y}</option>`;
+        }
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-zinc-500 font-semibold">Chọn năm:</span>
+            <select onchange="changeReportYear(this.value)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-semibold border border-transparent focus:border-emerald-500 focus:outline-none">
+              ${yearOptions}
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="shiftReportYear(-1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">← Năm trước</button>
+            <button onclick="goReportCurrentYear()" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold active:scale-95 transition">Năm nay</button>
+            <button onclick="shiftReportYear(1)" class="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold active:scale-95 transition">Năm sau →</button>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="text-xs text-zinc-500 py-1 font-medium">
+            ✨ Đang hiển thị toàn bộ giao dịch từ trước đến nay
+          </div>
+        `;
+      }
+    }
+
+    function getFilteredTransactions() {
+      const all = appData.transactions || [];
+      if (reportMode === 'day') {
+        const parts = selectedDay.split('-');
+        const targetY = parseInt(parts[0], 10);
+        const targetM = parseInt(parts[1], 10) - 1;
+        const targetD = parseInt(parts[2], 10);
+        return all.filter(t => {
+          const d = new Date(t.date);
+          return d.getFullYear() === targetY && d.getMonth() === targetM && d.getDate() === targetD;
+        });
+      } else if (reportMode === 'month') {
+        const parts = selectedMonth.split('-');
+        const targetY = parseInt(parts[0], 10);
+        const targetM = parseInt(parts[1], 10) - 1;
+        return all.filter(t => {
+          const d = new Date(t.date);
+          return d.getFullYear() === targetY && d.getMonth() === targetM;
+        });
+      } else if (reportMode === 'year') {
+        return all.filter(t => {
+          const d = new Date(t.date);
+          return d.getFullYear() === selectedYear;
+        });
+      }
+      return all;
+    }
+
+    function renderReportCharts(filteredTx) {
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#a1a1aa' : '#52525b';
+      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+      // 1. Donut Chart: Categories breakdown
+      const expenseMap = {};
+      filteredTx.filter(t => t.type === 'expense').forEach(tx => {
+        expenseMap[tx.category] = (expenseMap[tx.category] || 0) + Number(tx.amount || 0);
+      });
+
+      const catLabels = [];
+      const catData = [];
+      const catColors = [];
+
+      Object.keys(expenseMap).forEach(catId => {
+        const cat = appData.categories.find(c => c.id === catId) || { name: 'Khác', color: '#64748b' };
+        catLabels.push(cat.name);
+        catData.push(expenseMap[catId]);
+        catColors.push(cat.color);
+      });
+
+      const legendEl = document.getElementById('category-legend');
+      if (catLabels.length === 0) {
+        legendEl.innerHTML = `<p class="col-span-2 text-center text-zinc-400 py-2">Không có khoản chi nào.</p>`;
+      } else {
+        legendEl.innerHTML = catLabels.map((name, i) => `
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${catColors[i]}"></span>
+            <span class="truncate font-medium text-zinc-600 dark:text-zinc-400">${name}: <b>${(catData[i]).toLocaleString('vi-VN')}₫</b></span>
+          </div>
+        `).join('');
+      }
+
+      const donutCanvas = document.getElementById('categoryDonutChart');
+      if (donutCanvas) {
+        const donutCtx = donutCanvas.getContext('2d');
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        categoryChartInstance = new Chart(donutCtx, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels.length ? catLabels : ['Chưa có chi tiêu'],
+            datasets: [{
+              data: catData.length ? catData : [1],
+              backgroundColor: catColors.length ? catColors : ['#71717a'],
+              borderWidth: 0,
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '72%'
+          }
+        });
+      }
+
+      // 2. Bar Chart: Breakdown over time
+      let barLabels = [];
+      let barValues = [];
+
+      if (reportMode === 'day') {
+        // Show by category or transaction items of that day
+        const dayExpenses = filteredTx.filter(t => t.type === 'expense');
+        if (dayExpenses.length === 0) {
+          barLabels = ['Không có chi tiêu'];
+          barValues = [0];
+        } else {
+          barLabels = dayExpenses.map(t => {
+            const cat = appData.categories.find(c => c.id === t.category);
+            return (t.note || cat?.name || 'Khoản chi').slice(0, 10);
+          });
+          barValues = dayExpenses.map(t => Number(t.amount || 0));
+        }
+      } else if (reportMode === 'month') {
+        // Days of that month (1 to 28/29/30/31)
+        const parts = selectedMonth.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const daysInMonth = new Date(y, m, 0).getDate();
+        barLabels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
+        barValues = new Array(daysInMonth).fill(0);
+
+        filteredTx.filter(t => t.type === 'expense').forEach(tx => {
+          const d = new Date(tx.date);
+          const dayIndex = d.getDate() - 1;
+          if (dayIndex >= 0 && dayIndex < daysInMonth) {
+            barValues[dayIndex] += Number(tx.amount || 0);
+          }
+        });
+      } else if (reportMode === 'year') {
+        // 12 Months
+        barLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+        barValues = new Array(12).fill(0);
+        filteredTx.filter(t => t.type === 'expense').forEach(tx => {
+          const d = new Date(tx.date);
+          barValues[d.getMonth()] += Number(tx.amount || 0);
+        });
+      } else {
+        // All time: group by last 6 months or all years
+        barLabels = ['Tổng chi'];
+        barValues = [filteredTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount || 0), 0)];
+      }
+
+      const barCanvas = document.getElementById('weeklyBarChart');
+      if (barCanvas) {
+        const barCtx = barCanvas.getContext('2d');
+        if (weeklyChartInstance) weeklyChartInstance.destroy();
+        weeklyChartInstance = new Chart(barCtx, {
+          type: 'bar',
+          data: {
+            labels: barLabels,
+            datasets: [{
+              label: 'Chi tiêu',
+              data: barValues,
+              backgroundColor: '#10b981',
+              borderRadius: 6,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: textColor, maxRotation: 0, autoSkip: true }
+              },
+              y: {
+                grid: { color: gridColor },
+                ticks: {
+                  color: textColor,
+                  callback: (val) => (val >= 1000000 ? (val / 1000000) + 'tr' : val >= 1000 ? (val / 1000) + 'k' : val)
+                }
+              }
             }
           }
-          appData.transactions.splice(txIndex, 1);
-          saveToLocalStorage();
-          renderAll();
-          showToast('Đã xóa giao dịch!');
-        }
+        });
       }
     }
 
-    // Goal Modal Controls
-    function openGoalModal() {
-      document.getElementById('goal-name').value = '';
-      document.getElementById('goal-target').value = '';
-      document.getElementById('goal-current').value = '';
-      document.getElementById('goal-modal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-    function closeGoalModal() {
-      document.getElementById('goal-modal').classList.add('hidden');
-    }
-    function submitGoal() {
-      const name = document.getElementById('goal-name').value.trim();
-      const target = Number(document.getElementById('goal-target').value);
-      const current = Number(document.getElementById('goal-current').value) || 0;
-      const deadline = document.getElementById('goal-deadline').value;
-      if (!name || !target) {
-        alert('Vui lòng điền đủ tên và số tiền mục tiêu!');
-        return;
+    function renderSettings() {
+      document.getElementById('input-daily-budget').value = appData.settings?.dailyBudget || 500000;
+      document.getElementById('input-monthly-budget').value = appData.settings?.monthlyBudget || 15000000;
+      if (appData.settings?.githubDbUrl) {
+        document.getElementById('input-github-db-url').value = appData.settings.githubDbUrl;
       }
-      appData.goals.push({
-        id: 'g_' + Date.now(),
-        name,
-        targetAmount: target,
-        currentAmount: current,
-        deadline,
-        icon: 'target',
-        color: '#10b981'
-      });
-      saveToLocalStorage();
-      closeGoalModal();
-      renderAll();
-      showToast('Đã thêm mục tiêu mới!');
-    }
-    function topUpGoal(goalId) {
-      const amountStr = prompt('Nhập số tiền bạn muốn nạp thêm vào mục tiêu này (VNĐ):');
-      if (amountStr && Number(amountStr) > 0) {
-        const goal = appData.goals.find(g => g.id === goalId);
-        if (goal) {
-          goal.currentAmount += Number(amountStr);
-          saveToLocalStorage();
-          renderAll();
-          showToast('Đã cộng tiền tích lũy thành công!');
-        }
-      }
-    }
-
-    // Wallet Modal Controls
-    function openWalletModal() {
-      document.getElementById('wallet-name').value = '';
-      document.getElementById('wallet-balance').value = '';
-      document.getElementById('wallet-modal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-    function closeWalletModal() {
-      document.getElementById('wallet-modal').classList.add('hidden');
-    }
-    function submitWallet() {
-      const name = document.getElementById('wallet-name').value.trim();
-      const type = document.getElementById('wallet-type').value;
-      const balance = Number(document.getElementById('wallet-balance').value) || 0;
-      if (!name) {
-        alert('Vui lòng nhập tên ví!');
-        return;
-      }
-      const colors = [
-        'from-blue-600 to-indigo-900',
-        'from-emerald-600 to-teal-800',
-        'from-purple-600 to-violet-900',
-        'from-rose-600 to-pink-800',
-        'from-zinc-800 to-zinc-950'
-      ];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      appData.wallets.push({
-        id: 'w_' + Date.now(),
-        name,
-        type,
-        balance,
-        color: randomColor,
-        icon: type === 'bank' ? 'building-2' : type === 'cash' ? 'wallet' : 'credit-card',
-        accountNumber: String(Math.floor(1000 + Math.random() * 9000))
-      });
-      saveToLocalStorage();
-      closeWalletModal();
-      renderAll();
-      showToast('Đã thêm ví mới thành công!');
     }
 
     // Service Worker Registration for PWA

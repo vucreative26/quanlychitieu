@@ -3,45 +3,11 @@
     "currency": "VND",
     "pin": "1234",
     "theme": "dark",
+    "dailyBudget": 500000,
     "monthlyBudget": 15000000,
     "githubDbUrl": ""
   },
-  "wallets": [
-    {
-      "id": "w1",
-      "name": "Tiền mặt",
-      "type": "cash",
-      "balance": 3500000,
-      "color": "from-emerald-500 to-teal-700",
-      "icon": "wallet"
-    },
-    {
-      "id": "w2",
-      "name": "Ngân hàng (MB Bank)",
-      "type": "bank",
-      "balance": 28450000,
-      "color": "from-blue-600 to-indigo-900",
-      "icon": "building-2",
-      "accountNumber": "9934"
-    },
-    {
-      "id": "w3",
-      "name": "Thẻ Visa / Tín dụng",
-      "type": "credit",
-      "balance": 15000000,
-      "color": "from-zinc-900 via-neutral-800 to-zinc-950",
-      "icon": "credit-card",
-      "accountNumber": "6780"
-    },
-    {
-      "id": "w4",
-      "name": "Ví MoMo",
-      "type": "ewallet",
-      "balance": 1250000,
-      "color": "from-pink-500 to-rose-600",
-      "icon": "smartphone"
-    }
-  ],
+  "cards": [],
   "categories": [
     { "id": "cat_food", "name": "Ăn uống", "type": "expense", "icon": "utensils", "color": "#f97316" },
     { "id": "cat_shopping", "name": "Mua sắm", "type": "expense", "icon": "shopping-bag", "color": "#ec4899" },
@@ -53,89 +19,7 @@
     { "id": "cat_bonus", "name": "Thưởng & Dự án", "type": "income", "icon": "award", "color": "#14b8a6" },
     { "id": "cat_invest", "name": "Đầu tư / Lãi", "type": "income", "icon": "trending-up", "color": "#6366f1" }
   ],
-  "goals": [
-    {
-      "id": "g1",
-      "name": "Du lịch Hè (Summer Vacation)",
-      "targetAmount": 25000000,
-      "currentAmount": 15000000,
-      "deadline": "2026-07-30",
-      "icon": "car",
-      "color": "#10b981"
-    },
-    {
-      "id": "g2",
-      "name": "Quỹ Mua Nhà / Bất động sản",
-      "targetAmount": 200000000,
-      "currentAmount": 65000000,
-      "deadline": "2028-12-31",
-      "icon": "home",
-      "color": "#f97316"
-    },
-    {
-      "id": "g3",
-      "name": "Khóa học Chuyên gia",
-      "targetAmount": 10000000,
-      "currentAmount": 7500000,
-      "deadline": "2026-09-15",
-      "icon": "graduation-cap",
-      "color": "#3b82f6"
-    }
-  ],
-  "transactions": [
-    {
-      "id": "tx_001",
-      "type": "expense",
-      "amount": 125000,
-      "category": "cat_food",
-      "walletId": "w1",
-      "note": "Ăn trưa & Cà phê sáng",
-      "date": "2026-10-20T08:30:00.000Z"
-    },
-    {
-      "id": "tx_002",
-      "type": "income",
-      "amount": 25000000,
-      "category": "cat_salary",
-      "walletId": "w2",
-      "note": "Lương chuyển khoản tháng này",
-      "date": "2026-10-18T10:00:00.000Z"
-    },
-    {
-      "id": "tx_003",
-      "type": "expense",
-      "amount": 450000,
-      "category": "cat_shopping",
-      "walletId": "w3",
-      "note": "Mua sách và văn phòng phẩm",
-      "date": "2026-10-17T15:20:00.000Z"
-    },
-    {
-      "id": "tx_004",
-      "type": "expense",
-      "amount": 890000,
-      "category": "cat_bills",
-      "walletId": "w2",
-      "note": "Tiền điện và internet tháng 10",
-      "date": "2026-10-16T19:40:00.000Z"
-    },
-    {
-      "id": "tx_005",
-      "type": "expense",
-      "amount": 180000,
-      "category": "cat_transport",
-      "walletId": "w4",
-      "note": "Đổ xăng xe máy",
-      "date": "2026-10-15T09:15:00.000Z"
-    },
-    {
-      "id": "tx_006",
-      "type": "income",
-      "amount": 4200000,
-      "category": "cat_bonus",
-      "walletId": "w2",
-      "note": "Thưởng dự án hoàn thành",
-      "date": "2026-10-12T14:00:00.000Z"
-    }
-  ]
+  "goals": [],
+  "transactions": [],
+  "notifications": []
 }
