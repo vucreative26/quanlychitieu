@@ -67,6 +67,13 @@
     .transaction-wallet { max-width: 100%; overflow-wrap: anywhere; }
     .transaction-amount { max-width: 42%; overflow-wrap: anywhere; }
     #tx-category-wallet.split-mode { grid-template-columns: 1fr; }
+    #pin-lock-modal { overflow-y: auto; align-items: flex-start; }
+    #pin-lock-content { margin-block: auto; flex-shrink: 0; }
+    @media (max-height: 760px) {
+      #pin-lock-content > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+      #pin-keypad button { height: 48px; }
+      #pin-lock-content > div:first-child > div { width: 64px; height: 64px; }
+    }
     /* Hide scrollbars */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -109,7 +116,7 @@
 
   <!-- ================= PIN / PASSWORD LOCK OVERLAY ================= -->
   <div id="pin-lock-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 transition-all duration-300">
-    <div class="w-full max-w-xs text-center space-y-6">
+    <div id="pin-lock-content" class="w-full max-w-xs text-center space-y-6">
       <div class="flex justify-center">
         <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-xl shadow-emerald-500/20 flex items-center justify-center">
           <div class="w-full h-full bg-zinc-900 rounded-[22px] flex items-center justify-center">
@@ -153,9 +160,9 @@
         Bảo mật mã PIN • Đúng mật khẩu mới truy cập được
       </div>
       <div id="biometric-login" class="hidden space-y-3">
-        <p class="text-xs text-zinc-400">Bước 2: Xác thực thiết bị để mở khóa</p>
+        <p class="text-xs text-zinc-400">Hoặc mở nhanh bằng</p>
         <button id="biometric-retry" type="button" onclick="verifyBiometricLogin()" class="w-full py-3 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-sm">Face ID / Sinh trắc học</button>
-        <button type="button" onclick="usePinFallback()" class="text-xs text-zinc-400 underline">Dùng PIN dự phòng</button>
+        <button type="button" onclick="usePinFallback()" class="text-xs text-zinc-400 underline">Dùng mã PIN</button>
       </div>
     </div>
   </div>
@@ -551,11 +558,11 @@
 
         <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
           <h3 class="font-bold text-sm">Face ID / Sinh trắc học</h3>
-          <p class="text-xs text-zinc-500">Thêm bước xác thực thiết bị sau mã PIN. Trên iPhone hỗ trợ Face ID; thiết bị khác có thể dùng vân tay, Windows Hello hoặc mã khóa máy.</p>
+          <p class="text-xs text-zinc-500">Chọn Face ID / sinh trắc học hoặc mã PIN để mở khóa. Chỉ cần một trong hai. Thiết bị khác có thể dùng vân tay, Windows Hello hoặc mã khóa máy.</p>
           <p id="biometric-settings-status" class="text-xs text-zinc-500" aria-live="polite">Đang kiểm tra thiết bị…</p>
           <button id="biometric-enable" type="button" onclick="enableBiometrics()" class="px-5 py-3 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-xs">Bật trên thiết bị này</button>
-          <button id="biometric-disable" type="button" onclick="disableBiometrics()" class="hidden px-5 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 font-bold text-xs">Tắt bước sinh trắc học</button>
-          <p class="text-xs text-zinc-500">Cần HTTPS và trình duyệt hỗ trợ. Cài riêng trên từng thiết bị; vẫn có PIN dự phòng nếu không xác thực được. App không lưu ảnh khuôn mặt.</p>
+          <button id="biometric-disable" type="button" onclick="disableBiometrics()" class="hidden px-5 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 font-bold text-xs">Tắt mở khóa sinh trắc học</button>
+          <p class="text-xs text-zinc-500">Cần HTTPS và trình duyệt hỗ trợ. Cài riêng trên từng thiết bị; mã PIN luôn dùng độc lập được. App không lưu ảnh khuôn mặt.</p>
         </div>
 
         <!-- Daily Budget Setting (Requirement 04) -->
@@ -1242,12 +1249,12 @@
       } else {
         lockModal.classList.add('hidden');
       }
+      updateBiometricLogin();
     }
 
     function pressPin(digit) {
       // Never validate against the default PIN while the saved database is loading.
       if (!isPinReady) return;
-      if (biometricAuth.state.pinPassed) return;
       const targetPin = (appData.settings?.pin || "1234").trim();
       if (document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
       if (enteredPin.length === targetPin.length) clearPin();
@@ -1315,6 +1322,7 @@
       enteredPin = "";
       const lockModal = document.getElementById('pin-lock-modal');
       lockModal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+      updateBiometricLogin();
       renderPinDots();
       clearPin();
       showToast('Đã khóa ứng dụng an toàn.');

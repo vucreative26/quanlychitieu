@@ -6,7 +6,6 @@ const biometricAuth = (() => {
   let busy = false;
   let generation = 0;
   let controller;
-  const state = { pinPassed: false, fallback: false };
   const encode = buffer => btoa(String.fromCharCode(...new Uint8Array(buffer)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), char => char.charCodeAt(0));
@@ -67,7 +66,7 @@ const biometricAuth = (() => {
     disable.classList.toggle('hidden', !record);
     disable.disabled = busy;
     document.getElementById('biometric-settings-status').textContent = record
-      ? 'Đã bật: nhập PIN rồi xác thực thiết bị. PIN dự phòng vẫn dùng được.'
+      ? 'Đã bật: chọn Face ID / sinh trắc học hoặc nhập mã PIN để mở khóa.'
       : available ? 'Thiết bị hỗ trợ. Chưa bật trên trình duyệt này.'
         : 'Chưa khả dụng: cần tên miền HTTPS (hoặc localhost), trình duyệt hỗ trợ và thiết bị có xác thực màn hình khóa.';
   }
@@ -96,15 +95,15 @@ const biometricAuth = (() => {
         origin: location.origin, rpId: location.hostname,
         credentialId: encode(credential.rawId), publicKey: encode(publicKey), counter
       }));
-      showToast('Đã bật bước xác thực thiết bị sau PIN.');
+      showToast('Đã bật mở khóa bằng Face ID / sinh trắc học.');
     } catch (error) {
       showToast(error.name === 'NotAllowedError' ? 'Đã hủy hoặc hết thời gian đăng ký. PIN vẫn dùng bình thường.' : error.message);
     } finally { busy = false; await settings(); }
   }
   async function verify() {
-    if (busy || !state.pinPassed) return;
+    if (busy || document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
     const record = read();
-    if (!record) { message('Chưa có khóa trên thiết bị này. Hãy dùng PIN dự phòng.'); return; }
+    if (!record) { message('Chưa bật sinh trắc học trên thiết bị này. Hãy nhập mã PIN.'); return; }
     busy = true;
     const currentGeneration = generation;
     controller = new AbortController();
@@ -126,14 +125,14 @@ const biometricAuth = (() => {
       const key = await crypto.subtle.importKey('spki', decode(record.publicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
       const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, rawSignature(credential.response.signature), signedData);
       if (!valid || (record.counter > 0 && counter > 0 && counter <= record.counter)) throw new Error('Không xác minh được chữ ký thiết bị.');
-      if (generation !== currentGeneration || !state.pinPassed) return;
+      if (generation !== currentGeneration || document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
       record.counter = counter;
       localStorage.setItem(storageKey, JSON.stringify(record));
       reset();
       unlockApp();
     } catch (error) {
       if (generation === currentGeneration) message(error.name === 'NotAllowedError' || error.name === 'AbortError'
-        ? 'Chưa xác thực. Thử lại hoặc dùng PIN dự phòng.' : error.message);
+        ? 'Chưa xác thực. Thử lại hoặc nhập mã PIN.' : error.message);
     } finally {
       busy = false;
       document.getElementById('biometric-retry').disabled = false;
@@ -142,33 +141,29 @@ const biometricAuth = (() => {
   function reset() {
     generation++;
     controller?.abort();
-    state.pinPassed = false; state.fallback = false;
-    document.getElementById('biometric-login').classList.add('hidden');
+    refreshLogin();
+  }
+  function refreshLogin() {
+    const locked = !document.getElementById('pin-lock-modal').classList.contains('hidden');
+    document.getElementById('biometric-login').classList.toggle('hidden', !locked || !read());
     document.getElementById('pin-keypad').classList.remove('hidden');
   }
   function completePin() {
-    if (read() && !state.fallback) {
-      state.pinPassed = true;
-      document.getElementById('pin-keypad').classList.add('hidden');
-      document.getElementById('biometric-login').classList.remove('hidden');
-      // A separate tap preserves the browser's user activation on iOS, where
-      // the PIN keypad intentionally processes touchstart before touchend.
-      message('PIN đúng. Bấm nút bên dưới để xác thực thiết bị.');
-    } else { reset(); unlockApp(); }
+    reset();
+    unlockApp();
   }
   function fallback() {
-    reset(); state.fallback = true;
-    clearPin();
-    message('Nhập lại mã PIN để dùng chế độ dự phòng lần này.');
+    reset();
+    message('Nhập mã PIN để mở khóa.');
   }
   function disable() {
     if (!document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
-    if (!confirm('Tắt bước xác thực thiết bị? App sẽ mở bằng mã PIN.')) return;
+    if (!confirm('Tắt mở khóa bằng sinh trắc học? Bạn vẫn mở app bằng mã PIN.')) return;
     localStorage.removeItem(storageKey);
     reset(); settings();
-    showToast('Đã tắt bước xác thực thiết bị.');
+    showToast('Đã tắt mở khóa bằng sinh trắc học.');
   }
-  return { settings, enroll, verify, reset, completePin, fallback, disable, state };
+  return { settings, enroll, verify, reset, refreshLogin, completePin, fallback, disable };
 })();
 
 function updateBiometricSettings() { return biometricAuth.settings(); }
@@ -178,3 +173,4 @@ function completePinLogin() { return biometricAuth.completePin(); }
 function verifyBiometricLogin() { return biometricAuth.verify(); }
 function usePinFallback() { return biometricAuth.fallback(); }
 function resetBiometricLogin() { return biometricAuth.reset(); }
+function updateBiometricLogin() { return biometricAuth.refreshLogin(); }
