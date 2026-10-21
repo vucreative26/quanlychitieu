@@ -38,6 +38,24 @@
     input, textarea, select {
       user-select: auto;
     }
+    /* Keep rapid PIN taps immediate and prevent double-tap zoom on mobile. */
+    #pin-keypad, #pin-keypad button {
+      touch-action: manipulation;
+    }
+    #pin-keypad button {
+      transition: none;
+      transform: none;
+      -webkit-touch-callout: none;
+    }
+    #pin-keypad button:active {
+      background-color: #3f3f46;
+    }
+    #pin-lock-modal {
+      background-color: #09090bf5;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .pin-dot { transition-duration: 60ms; }
     /* Hide scrollbars */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -103,7 +121,7 @@
       <p id="pin-error" class="text-xs text-rose-500 font-semibold h-4 transition-all"></p>
 
       <!-- Numeric Keypad -->
-      <div class="grid grid-cols-3 gap-3">
+      <div id="pin-keypad" class="grid grid-cols-3 gap-3">
         <button type="button" onclick="pressPin('1')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">1</button>
         <button type="button" onclick="pressPin('2')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">2</button>
         <button type="button" onclick="pressPin('3')" class="h-14 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-xl font-bold text-white transition">3</button>
@@ -1105,6 +1123,11 @@
       }
       if (!appData.goals) appData.goals = [];
       if (!appData.transactions) appData.transactions = [];
+      // Select values are strings, including IDs imported from older databases.
+      appData.cards.forEach(card => { card.id = String(card.id); });
+      appData.transactions.forEach(tx => {
+        if (tx.walletId != null) tx.walletId = String(tx.walletId);
+      });
       if (!appData.notifications) appData.notifications = [];
       if (!appData.categories || appData.categories.length === 0) {
         appData.categories = [
@@ -1139,6 +1162,16 @@
     // ==========================================
     let isCurrentPinVisible = false;
     let isPinReady = false;
+    let pinResetTimer;
+
+    // Handle the touch immediately. Cancelling its native click prevents a
+    // second digit on release; mouse, keyboard and assistive clicks still work.
+    document.getElementById('pin-keypad').addEventListener('touchstart', event => {
+      const button = event.target.closest('button');
+      if (!button || event.touches.length !== 1) return;
+      event.preventDefault();
+      button.click();
+    }, { passive: false });
 
     function renderPinDots() {
       const targetPin = (appData.settings?.pin || "1234").trim();
@@ -1167,6 +1200,8 @@
       // Never validate against the default PIN while the saved database is loading.
       if (!isPinReady) return;
       const targetPin = (appData.settings?.pin || "1234").trim();
+      if (document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
+      if (enteredPin.length === targetPin.length) clearPin();
       if (enteredPin.length < targetPin.length) {
         enteredPin += digit;
         updatePinDots();
@@ -1184,13 +1219,14 @@
             document.querySelectorAll('.pin-dot').forEach(dot => {
               dot.classList.add('border-rose-500', 'bg-rose-500/50');
             });
-            setTimeout(() => clearPin(), 500);
+            pinResetTimer = setTimeout(() => clearPin(), 500);
           }
         }
       }
     }
 
     function deletePinDigit() {
+      clearTimeout(pinResetTimer);
       if (enteredPin.length > 0) {
         enteredPin = enteredPin.slice(0, -1);
         const errEl = document.getElementById('pin-error');
@@ -1200,6 +1236,7 @@
     }
 
     function clearPin() {
+      clearTimeout(pinResetTimer);
       enteredPin = "";
       const errEl = document.getElementById('pin-error');
       if (errEl) errEl.innerText = "";
@@ -1789,7 +1826,7 @@
 
     // ==========================================
     // CARDS & PAYMENT METHODS (Requirement 01 & 03)
-    // No balance required, unified with payment methods!
+    // Each method shows only the transactions linked to its own ID.
     // ==========================================
     function renderCards() {
       const container = document.getElementById('cards-grid');
@@ -1812,18 +1849,21 @@
       }
 
       container.innerHTML = appData.cards.map(c => {
-        // Calculate total expenses made with this card
-        const cardTotalExpense = (appData.transactions || [])
-          .filter(t => t.walletId === c.id && t.type === 'expense')
-          .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const totals = (appData.transactions || []).reduce((sum, tx) => {
+          if (tx.walletId === c.id && (tx.type === 'income' || tx.type === 'expense')) {
+            sum[tx.type] += Number(tx.amount || 0);
+          }
+          return sum;
+        }, { income: 0, expense: 0 });
+        const methodIcon = c.type === 'cash' ? 'banknote' : c.type === 'bank' ? 'building-2' : c.type === 'ewallet' ? 'wallet' : 'credit-card';
 
         return `
-          <div class="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br ${c.color || 'from-blue-600 to-indigo-900'} text-white shadow-xl border border-white/10 flex flex-col justify-between min-h-[175px]">
+          <div data-wallet-id="${c.id}" class="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br ${c.color || 'from-blue-600 to-indigo-900'} text-white shadow-xl border border-white/10 flex flex-col justify-between min-h-[175px]">
             <!-- Card Chip & Type & Actions -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div class="w-8 h-6 rounded-md bg-amber-400/90 border border-amber-600 flex items-center justify-center">
-                  <div class="w-4 h-3 border border-amber-800/40 rounded-sm"></div>
+                <div class="w-8 h-6 rounded-md bg-black/20 flex items-center justify-center">
+                  <i data-lucide="${methodIcon}" class="w-5 h-5"></i>
                 </div>
                 <span class="text-xs font-semibold uppercase tracking-wider text-white/80">${getCardTypeLabel(c.type)}</span>
               </div>
@@ -1837,10 +1877,14 @@
               </div>
             </div>
 
-            <!-- Card Info (No balance, tracks spent total) -->
+            <!-- Net flow and totals belong exclusively to this wallet. -->
             <div class="my-4">
-              <p class="text-xs text-white/70 mb-0.5">Tổng chi tiêu qua thẻ này</p>
-              <h3 class="text-2xl font-black tracking-tight">${formatMoney(cardTotalExpense)}</h3>
+              <p class="text-xs text-white/70 mb-0.5">Thu − Chi · ${getCardTypeLabel(c.type)}</p>
+              <h3 data-wallet-net class="text-2xl font-black tracking-tight">${formatMoney(totals.income - totals.expense)}</h3>
+              <div class="flex justify-between gap-3 text-xs text-white/80 mt-2">
+                <span>Tổng thu: <strong data-wallet-income>${formatMoney(totals.income)}</strong></span>
+                <span>Tổng chi: <strong data-wallet-expense>${formatMoney(totals.expense)}</strong></span>
+              </div>
             </div>
 
             <!-- Bottom Details -->
@@ -1925,7 +1969,7 @@
       } else {
         // Add new card
         appData.cards.push({
-          id: 'card_' + Date.now(),
+          id: createRecordId('card', appData.cards),
           name,
           type,
           accountNumber,
@@ -2313,9 +2357,7 @@
       // Populate Categories
       populateCategorySelect();
 
-      // Populate Cards
-      const walletSelect = document.getElementById('tx-wallet');
-      walletSelect.innerHTML = appData.cards.map(c => `<option value="${c.id}">${c.name} (${getCardTypeLabel(c.type)})</option>`).join('');
+      populateWalletSelect();
 
       // Set default date to current local datetime
       document.getElementById('tx-date').value = getLocalDateTimeString(new Date());
@@ -2340,9 +2382,7 @@
       // Populate Categories
       populateCategorySelect(tx.category);
 
-      // Populate Cards
-      const walletSelect = document.getElementById('tx-wallet');
-      walletSelect.innerHTML = (appData.cards || []).map(c => `<option value="${c.id}" ${c.id === tx.walletId ? 'selected' : ''}>${c.name} (${getCardTypeLabel(c.type)})</option>`).join('');
+      populateWalletSelect(tx.walletId);
 
       document.getElementById('tx-amount').value = tx.amount;
       document.getElementById('tx-note').value = tx.note || '';
@@ -2354,6 +2394,33 @@
 
     function closeTransactionModal() {
       document.getElementById('transaction-modal').classList.add('hidden');
+    }
+
+    function createRecordId(prefix, records) {
+      const base = `${prefix}_${Date.now()}`;
+      let id = base;
+      let suffix = 0;
+      while (records.some(record => record.id === id)) id = `${base}_${++suffix}`;
+      return id;
+    }
+
+    function populateWalletSelect(selectedId = '') {
+      const select = document.getElementById('tx-wallet');
+      const cards = appData.cards || [];
+      const selected = String(selectedId ?? '');
+      const missing = selected && !cards.some(card => card.id === selected);
+      const placeholder = new Option(missing
+        ? 'Ví cũ không còn — vui lòng chọn lại'
+        : '— Chọn ví / tài khoản —', '');
+      placeholder.disabled = true;
+      select.replaceChildren(placeholder);
+      cards.forEach(card => {
+        const option = new Option(`${card.name} (${getCardTypeLabel(card.type)})`, card.id);
+        // Ambiguous imported IDs cannot safely identify a payment method.
+        option.disabled = cards.filter(item => item.id === card.id).length !== 1;
+        select.add(option);
+      });
+      select.value = cards.filter(card => card.id === selected).length === 1 ? selected : '';
     }
 
     function setTxType(type) {
@@ -2385,7 +2452,7 @@
         return;
       }
       const walletId = document.getElementById('tx-wallet').value;
-      if (!walletId) {
+      if (!walletId || (appData.cards || []).filter(card => card.id === walletId).length !== 1) {
         alert('Vui lòng chọn Thẻ hoặc Ví thanh toán!');
         return;
       }
@@ -2409,7 +2476,7 @@
         }
       } else {
         const newTx = {
-          id: 'tx_' + Date.now(),
+          id: createRecordId('tx', appData.transactions),
           type: currentTxType,
           amount: amount,
           category: category,
