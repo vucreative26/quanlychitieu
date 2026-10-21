@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fintech-pwa-v4';
+const CACHE_NAME = 'fintech-pwa-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   './assets/app.css',
   './assets/lucide.min.js',
   './assets/chart.umd.js',
+  './assets/features.js',
+  './assets/biometrics.js',
   './icon.svg',
   './apple-touch-icon.png',
   './icon-192.png',

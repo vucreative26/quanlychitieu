@@ -28,6 +28,8 @@
   <link rel="stylesheet" href="./assets/app.css" />
   <script defer src="./assets/lucide.min.js"></script>
   <script defer src="./assets/chart.umd.js"></script>
+  <script defer src="./assets/features.js"></script>
+  <script defer src="./assets/biometrics.js"></script>
 
   <style>
     /* Smooth transitions and mobile polish */
@@ -56,6 +58,15 @@
       -webkit-backdrop-filter: none;
     }
     .pin-dot { transition-duration: 60ms; }
+    #transaction-modal > div { max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; }
+    .payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, .7fr) 32px; gap: 8px; align-items: center; }
+    .payment-row input, .payment-row select, .report-filters select { min-width: 0; width: 100%; font-size: 16px; padding: 10px; border-radius: 12px; background: #f4f4f5; color: #18181b; }
+    .dark .payment-row input, .dark .payment-row select, .dark .report-filters select { background: #27272a; color: #fafafa; }
+    #split-summary[data-valid="false"] { color: #f43f5e; }
+    #split-summary[data-valid="true"] { color: #10b981; }
+    .transaction-wallet { max-width: 100%; overflow-wrap: anywhere; }
+    .transaction-amount { max-width: 42%; overflow-wrap: anywhere; }
+    #tx-category-wallet.split-mode { grid-template-columns: 1fr; }
     /* Hide scrollbars */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -140,6 +151,11 @@
 
       <div class="text-xs text-zinc-500">
         Bảo mật mã PIN • Đúng mật khẩu mới truy cập được
+      </div>
+      <div id="biometric-login" class="hidden space-y-3">
+        <p class="text-xs text-zinc-400">Bước 2: Xác thực thiết bị để mở khóa</p>
+        <button id="biometric-retry" type="button" onclick="verifyBiometricLogin()" class="w-full py-3 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-sm">Face ID / Sinh trắc học</button>
+        <button type="button" onclick="usePinFallback()" class="text-xs text-zinc-400 underline">Dùng PIN dự phòng</button>
       </div>
     </div>
   </div>
@@ -420,6 +436,15 @@
           <div id="report-date-selector-container" class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
             <!-- Rendered by JS based on reportMode -->
           </div>
+          <div class="report-filters grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-xs font-semibold text-zinc-500">Danh mục<select id="report-category" onchange="renderReports()" aria-label="Lọc danh mục"></select></label>
+            <label class="text-xs font-semibold text-zinc-500">Ví / Tài khoản<select id="report-wallet" onchange="renderReports()" aria-label="Lọc ví"></select></label>
+            <label class="text-xs font-semibold text-zinc-500">Loại giao dịch<select id="report-type" onchange="renderReports()" aria-label="Lọc thu chi"><option value="">Tất cả thu / chi</option><option value="expense">Khoản chi</option><option value="income">Khoản thu</option></select></label>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <p id="report-filter-summary" class="text-xs text-zinc-500" aria-live="polite"></p>
+            <button type="button" onclick="resetReportFilters()" class="text-xs font-bold text-emerald-500 shrink-0">Xóa bộ lọc</button>
+          </div>
         </div>
 
         <!-- KPI SUMMARY CARDS FOR CHOSEN PERIOD -->
@@ -522,6 +547,15 @@
             <button type="button" onclick="saveNewPin()" class="px-5 py-3 rounded-2xl bg-zinc-900 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 font-bold text-xs active:scale-95 transition">Đổi PIN</button>
           </div>
           <p class="text-[11px] text-zinc-400">PIN đang dùng: <span id="current-pin-display" class="font-mono font-bold text-emerald-500">••••</span> <button type="button" onclick="toggleCurrentPinVisibility()" class="underline ml-1 text-zinc-500 hover:text-zinc-300">Hiện/Ẩn</button></p>
+        </div>
+
+        <div class="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-4">
+          <h3 class="font-bold text-sm">Face ID / Sinh trắc học</h3>
+          <p class="text-xs text-zinc-500">Thêm bước xác thực thiết bị sau mã PIN. Trên iPhone hỗ trợ Face ID; thiết bị khác có thể dùng vân tay, Windows Hello hoặc mã khóa máy.</p>
+          <p id="biometric-settings-status" class="text-xs text-zinc-500" aria-live="polite">Đang kiểm tra thiết bị…</p>
+          <button id="biometric-enable" type="button" onclick="enableBiometrics()" class="px-5 py-3 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-xs">Bật trên thiết bị này</button>
+          <button id="biometric-disable" type="button" onclick="disableBiometrics()" class="hidden px-5 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 font-bold text-xs">Tắt bước sinh trắc học</button>
+          <p class="text-xs text-zinc-500">Cần HTTPS và trình duyệt hỗ trợ. Cài riêng trên từng thiết bị; vẫn có PIN dự phòng nếu không xác thực được. App không lưu ảnh khuôn mặt.</p>
         </div>
 
         <!-- Daily Budget Setting (Requirement 04) -->
@@ -721,7 +755,7 @@
 
       <!-- Amount Input -->
       <div>
-        <label class="block text-xs font-semibold text-zinc-500 mb-1">Số tiền (VNĐ)</label>
+        <label id="tx-amount-label" class="block text-xs font-semibold text-zinc-500 mb-1">Số tiền (VNĐ)</label>
         <div class="relative">
           <input type="number" id="tx-amount" placeholder="0" class="w-full px-4 py-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-2xl font-extrabold" />
           <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">₫</span>
@@ -729,7 +763,7 @@
       </div>
 
       <!-- Category & Wallet / Card -->
-      <div class="grid grid-cols-2 gap-3">
+      <div id="tx-category-wallet" class="grid grid-cols-2 gap-3">
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-semibold text-zinc-500">Danh mục</label>
@@ -747,6 +781,19 @@
           <select id="tx-wallet" class="w-full px-3 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-emerald-500 focus:outline-none text-xs font-medium">
             <!-- Populated by JS from cards -->
           </select>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <label class="flex items-center gap-2 text-xs font-semibold"><input id="tx-split-enabled" type="checkbox" onchange="toggleSplitPayment(this.checked)" /> Chia tiền qua nhiều ví / tài khoản</label>
+        <div id="tx-split-panel" class="hidden space-y-3">
+          <p class="text-xs text-zinc-500">Một giao dịch, một tổng tiền. Nhập số tiền thực trả / nhận qua từng ví.</p>
+          <div id="tx-payments" class="space-y-3"></div>
+          <div class="flex items-center justify-between gap-3">
+            <button type="button" onclick="addPaymentRow()" class="text-xs font-bold text-emerald-500">+ Thêm ví</button>
+            <button type="button" onclick="fillPaymentRemainder()" class="text-xs font-bold text-emerald-500">Điền phần còn lại vào dòng cuối</button>
+          </div>
+          <p id="split-summary" class="text-xs font-semibold" aria-live="polite"></p>
         </div>
       </div>
 
@@ -1127,6 +1174,7 @@
       appData.cards.forEach(card => { card.id = String(card.id); });
       appData.transactions.forEach(tx => {
         if (tx.walletId != null) tx.walletId = String(tx.walletId);
+        if (Array.isArray(tx.payments)) tx.payments.forEach(payment => { payment.walletId = String(payment.walletId); });
       });
       if (!appData.notifications) appData.notifications = [];
       if (!appData.categories || appData.categories.length === 0) {
@@ -1199,6 +1247,7 @@
     function pressPin(digit) {
       // Never validate against the default PIN while the saved database is loading.
       if (!isPinReady) return;
+      if (biometricAuth.state.pinPassed) return;
       const targetPin = (appData.settings?.pin || "1234").trim();
       if (document.getElementById('pin-lock-modal').classList.contains('hidden')) return;
       if (enteredPin.length === targetPin.length) clearPin();
@@ -1207,7 +1256,7 @@
         updatePinDots();
         if (enteredPin.length === targetPin.length) {
           if (enteredPin === targetPin) {
-            unlockApp();
+            completePinLogin();
           } else {
             const errEl = document.getElementById('pin-error');
             if (errEl) errEl.innerText = "Mật khẩu không đúng! Vui lòng thử lại.";
@@ -1262,6 +1311,7 @@
     }
 
     function lockAppNow() {
+      resetBiometricLogin();
       enteredPin = "";
       const lockModal = document.getElementById('pin-lock-modal');
       lockModal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
@@ -1789,31 +1839,36 @@
 
     function renderTransactionRow(tx) {
       const cat = appData.categories.find(c => c.id === tx.category) || { name: 'Khác', icon: 'tag', color: '#64748b' };
-      const card = (appData.cards || []).find(c => c.id === tx.walletId) || { name: 'Ví / Thẻ' };
+      const payments = getTransactionPayments(tx);
+      const walletLabel = payments.map(payment => {
+        const card = (appData.cards || []).find(c => c.id === payment.walletId);
+        return `${card?.name || 'Ví đã xóa'}${payments.length > 1 ? ': ' + formatMoney(payment.amount) : ''}`;
+      }).join(' + ');
       const isIncome = tx.type === 'income';
       const formattedDate = formatDateTimeDisplay(tx.date);
 
       return `
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition">
-          <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
             <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style="background-color: ${cat.color}20; color: ${cat.color};">
               <i data-lucide="${cat.icon || 'activity'}" class="w-5 h-5"></i>
             </div>
-            <div>
+            <div class="min-w-0">
               <h4 class="text-xs sm:text-sm font-bold tracking-tight">${tx.note || cat.name}</h4>
-              <div class="flex items-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+              <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                 <span>${cat.name}</span>
                 <span>•</span>
-                <span class="px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 font-medium">${card.name}</span>
+                <span class="transaction-wallet px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 font-medium">${escapeText(walletLabel)}</span>
                 <span>•</span>
                 <span class="font-mono">${formattedDate}</span>
               </div>
             </div>
           </div>
-          <div class="text-right shrink-0">
+          <div class="transaction-amount text-right shrink-0">
             <p class="text-xs sm:text-sm font-extrabold ${isIncome ? 'text-emerald-500' : 'text-zinc-900 dark:text-zinc-100'}">
               ${isIncome ? '+' : '-'}${formatMoney(tx.amount)}
             </p>
+            ${tx.reportOriginalAmount != null ? `<p class="text-[10px] text-zinc-500">Phần của ví lọc / tổng ${formatMoney(tx.reportOriginalAmount)}</p>` : ''}
             <div class="flex items-center justify-end gap-2 mt-0.5">
               <button onclick="editTransaction('${tx.id}')" class="text-[10px] font-semibold text-emerald-500 hover:underline">Sửa</button>
               <span class="text-zinc-300 dark:text-zinc-700">|</span>
@@ -1850,8 +1905,8 @@
 
       container.innerHTML = appData.cards.map(c => {
         const totals = (appData.transactions || []).reduce((sum, tx) => {
-          if (tx.walletId === c.id && (tx.type === 'income' || tx.type === 'expense')) {
-            sum[tx.type] += Number(tx.amount || 0);
+          if (tx.type === 'income' || tx.type === 'expense') {
+            sum[tx.type] += getWalletTransactionAmount(tx, c.id);
           }
           return sum;
         }, { income: 0, expense: 0 });
@@ -2363,6 +2418,7 @@
       document.getElementById('tx-date').value = getLocalDateTimeString(new Date());
       document.getElementById('tx-amount').value = '';
       document.getElementById('tx-note').value = '';
+      resetSplitPayment();
 
       document.getElementById('transaction-modal').classList.remove('hidden');
       lucide.createIcons();
@@ -2387,6 +2443,7 @@
       document.getElementById('tx-amount').value = tx.amount;
       document.getElementById('tx-note').value = tx.note || '';
       document.getElementById('tx-date').value = getLocalDateTimeString(new Date(tx.date));
+      resetSplitPayment(tx);
 
       document.getElementById('transaction-modal').classList.remove('hidden');
       lucide.createIcons();
@@ -2404,8 +2461,7 @@
       return id;
     }
 
-    function populateWalletSelect(selectedId = '') {
-      const select = document.getElementById('tx-wallet');
+    function populateWalletSelect(selectedId = '', select = document.getElementById('tx-wallet')) {
       const cards = appData.cards || [];
       const selected = String(selectedId ?? '');
       const missing = selected && !cards.some(card => card.id === selected);
@@ -2442,8 +2498,8 @@
 
     function submitTransaction() {
       const amount = Number(document.getElementById('tx-amount').value);
-      if (!amount || amount <= 0) {
-        alert('Vui lòng nhập số tiền hợp lệ!');
+      if (!Number.isSafeInteger(amount) || amount <= 0) {
+        alert('Vui lòng nhập số tiền VNĐ nguyên, lớn hơn 0 và trong giới hạn hợp lệ!');
         return;
       }
       const category = document.getElementById('tx-category').value;
@@ -2451,11 +2507,9 @@
         alert('Vui lòng chọn hoặc tạo mới một danh mục hợp lệ!');
         return;
       }
-      const walletId = document.getElementById('tx-wallet').value;
-      if (!walletId || (appData.cards || []).filter(card => card.id === walletId).length !== 1) {
-        alert('Vui lòng chọn Thẻ hoặc Ví thanh toán!');
-        return;
-      }
+      const payments = readValidPayments(amount);
+      if (!payments) return;
+      const walletId = payments.length === 1 ? payments[0].walletId : null;
       const note = document.getElementById('tx-note').value.trim();
       const rawDate = document.getElementById('tx-date').value;
       const date = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
@@ -2470,6 +2524,8 @@
           tx.amount = amount;
           tx.category = category;
           tx.walletId = walletId;
+          if (payments.length > 1) tx.payments = payments;
+          else delete tx.payments;
           tx.note = note;
           tx.date = date;
           showToast('Đã cập nhật giao dịch thành công!');
@@ -2481,6 +2537,7 @@
           amount: amount,
           category: category,
           walletId: walletId,
+          ...(payments.length > 1 ? { payments } : {}),
           note: note,
           date: date
         };
@@ -2583,6 +2640,7 @@
 
     function renderReports() {
       renderReportDateControls();
+      populateReportFilters();
       const filteredTx = getFilteredTransactions();
 
       // 1. Calculate Period Totals
@@ -2688,7 +2746,7 @@
     }
 
     function getFilteredTransactions() {
-      const all = appData.transactions || [];
+      const all = applyReportFilters(appData.transactions || []);
       if (reportMode === 'day') {
         const parts = selectedDay.split('-');
         const targetY = parseInt(parts[0], 10);
@@ -2869,6 +2927,7 @@
       }
       renderSettingsCategories();
       updateCurrentPinDisplay();
+      updateBiometricSettings();
     }
 
     // Service Worker Registration for PWA
